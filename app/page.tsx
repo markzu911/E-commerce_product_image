@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { EditableTextField, EditableTagList } from '@/components/EditableField';
 import { AnalysisData, PromptConfig, Step, TextOverlayConfig } from '@/types';
 import { analyzeImage, generateImage, generateCustomImage, generateVideo } from '@/lib/gemini';
-import { Loader2, Upload, Download, CheckCircle, Image as ImageIcon, Sparkles, Maximize2, Edit2, Zap, Video, Play, X, Send, MessageSquare } from 'lucide-react';
+import { Loader2, Upload, Download, CheckCircle, Image as ImageIcon, Sparkles, Maximize2, Edit2, Zap, Video, Play, X, Send, MessageSquare, ArrowLeft, Sliders, Wand2 } from 'lucide-react';
 import { drawTextOverlay } from '@/lib/canvas-utils';
 
 const PRESET_SCENES = [
@@ -152,7 +152,8 @@ export default function Page() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const [activeMode, setActiveMode] = useState<'smart' | 'custom' | 'chat'>('smart');
+  const [activeMode, setActiveMode] = useState<'lobby' | 'normal' | 'chat'>('lobby');
+  const [normalSubMode, setNormalSubMode] = useState<'smart' | 'custom'>('smart');
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [customResolution, setCustomResolution] = useState<'1k' | '2k' | '4k'>('2k');
   const [customResult, setCustomResult] = useState<string>('');
@@ -167,6 +168,8 @@ export default function Page() {
   const [chatInput, setChatInput] = useState<string>('');
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
   const [chatImageBase64, setChatImageBase64] = useState<string>('');
+  const [chatImages, setChatImages] = useState<string[]>([]);
+  const [activeChatPreviewUrl, setActiveChatPreviewUrl] = useState<string>('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatAttachmentRef = useRef<HTMLInputElement>(null);
 
@@ -418,45 +421,59 @@ export default function Page() {
   };
 
   const handleChatAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const compressed = await compressImage(event.target?.result as string);
-      setChatImageBase64(compressed);
-    };
-    reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    // Process all files
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const compressed = await compressImage(event.target?.result as string);
+        setChatImages(prev => [...prev, compressed]);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleChatSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = chatInput.trim();
-    if (!query && !chatImageBase64) return;
+    if (!query && chatImages.length === 0) return;
 
     // Determine the current image context
     let activeImg = imageBase64;
-    if (chatImageBase64) {
-      activeImg = chatImageBase64;
-      setImageBase64(chatImageBase64);
-      setCustomReferenceBase64(chatImageBase64);
-      setChatImageBase64(''); // Reset attachment
+    if (chatImages.length > 0) {
+      activeImg = chatImages[0];
+      setImageBase64(chatImages[0]);
+      setCustomReferenceBase64(chatImages[0]);
     }
 
     const newUserMsg = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: query || '上传了新的商品图片',
-      imageUrl: activeImg === chatImageBase64 ? chatImageBase64 : undefined,
+      content: query || `已成功上传 ${chatImages.length} 张单品参考图`,
+      imageUrls: chatImages.length > 0 ? [...chatImages] : undefined,
     };
 
     setChatMessages(prev => [...prev, newUserMsg]);
     setChatInput('');
+    setChatImages([]); // Reset list
     setIsChatLoading(true);
 
     const apiMessages = [...chatMessages, newUserMsg].map(m => ({
       role: m.role,
       content: m.content
     }));
+
+    const typingId = `assistant-typing-${Date.now()}`;
+    const newAssistantMsg: any = {
+      id: typingId,
+      role: 'assistant',
+      content: '',
+      actionSuccess: true
+    };
+
+    setChatMessages(prev => [...prev, newAssistantMsg]);
 
     try {
       const response = await fetch('/api/chat', {
@@ -465,6 +482,7 @@ export default function Page() {
         body: JSON.stringify({
           messages: apiMessages,
           imageBase64: activeImg || null,
+          imagesBase64: newUserMsg.imageUrls || null,
           currentConfig: config,
           currentAnalysis: analysis
         })
@@ -481,192 +499,273 @@ export default function Page() {
         throw new Error(errorMsg);
       }
 
-      const resJson = await response.json();
-      if (!resJson.success || !resJson.data) {
-        throw new Error(resJson.error || 'AI 未返回有效数据');
+      if (!response.body) {
+        throw new Error('未返回可读流');
       }
 
-      const { reply, action, actionExplanation, smartParams, customParams, configParams } = resJson.data;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedText = '';
 
-      const newAssistantMsg: any = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: reply,
-        actionType: action,
-        actionExplanation,
-        actionSuccess: true
-      };
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      setChatMessages(prev => [...prev, newAssistantMsg]);
+        const chunkText = decoder.decode(value);
+        accumulatedText += chunkText;
 
-      setTimeout(() => {
-        chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 150);
-
-      // Respond structurally to actions returned by the chat model
-      if (action === 'analyze_image') {
-        if (!activeImg) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + '\n\n*(提示：请先在对话框中上传单品原图再进行分析)*',
-            actionSuccess: false
-          } : m));
-          setIsChatLoading(false);
-          return;
-        }
-        setStep('analyzing');
-        try {
-          const analyzed = await analyzeImage(activeImg, selectedType);
-          setAnalysis(analyzed);
-          setConfig(prev => ({
-            ...prev,
-            garmentCategory: analyzed.category || '',
-            garmentColor: analyzed.colors?.join(' ') || '',
-            garmentMaterial: analyzed.materials || '',
-            garmentStyle: analyzed.style || '',
-            modelStyle: analyzed.modelStyle || '',
-            sceneStyle: analyzed.sceneStyle || '',
-            sellingPoint1: analyzed.sellingPoints?.[0] || '',
-            sellingPoint2: analyzed.sellingPoints?.[1] || '',
-            sellingPoint3: analyzed.sellingPoints?.[2] || '',
-            brandName: analyzed.brandName || '',
-            sceneTheme: analyzed.posterTheme || '展示场景',
-          }));
-          setStep('result');
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + `\n\n🎯 **分析完成！**\n- 商品名称: ${analyzed.productName}\n- 品类: ${analyzed.category}\n- 核心材质: ${analyzed.materials}\n- 推荐卖点: ${analyzed.sellingPoints?.join(', ')}`,
-            actionSuccess: true
-          } : m));
-        } catch (err: any) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + `\n\n❌ **分析失败:** ${err.message}`,
-            actionSuccess: false
-          } : m));
-          setStep('upload');
-        }
-      } 
-      else if (action === 'update_config' && configParams) {
-        if (configParams.config) {
-          setConfig(prev => ({ ...prev, ...configParams.config }));
-        }
-        if (configParams.analysis) {
-          setAnalysis(prev => prev ? ({ ...prev, ...configParams.analysis }) : (configParams.analysis as any));
-        }
-        setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-          ...m,
-          content: m.content + `\n\n⚙️ **生图参数已同步更新！** 您可以在右侧看板中核对细节。`,
-          actionSuccess: true
-        } : m));
-      } 
-      else if (action === 'generate_smart' && smartParams) {
-        if (!activeImg) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + '\n\n*(提示：请先通过对话框附件或侧边栏上传商品服装原图)*',
-            actionSuccess: false
-          } : m));
-          setIsChatLoading(false);
-          return;
+        // Extract [REPLY] and [ACTION]
+        let replyPart = '';
+        const actionIdx = accumulatedText.indexOf('[ACTION]');
+        if (actionIdx !== -1) {
+          replyPart = accumulatedText.substring(0, actionIdx);
+        } else {
+          replyPart = accumulatedText;
         }
 
-        if (!userId || !toolId) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + '\n\n*(提示：检测到需要智能生图，但当前运行环境未绑定 SaaS 平台账户身份 (userId/toolId 缺失)，无法扣除积分及上传云存证，因此暂时无法触发真实生图。请在 SaaS 平台主站内启动此工具进行真实图片生成。)*',
-            actionSuccess: false
-          } : m));
-          setIsChatLoading(false);
-          return;
+        // Clean [REPLY] tag if present
+        if (replyPart.startsWith('[REPLY]')) {
+          replyPart = replyPart.substring(7);
         }
+        replyPart = replyPart.trim();
 
-        const genType = smartParams.type || selectedType;
-        setSelectedType(genType);
-
-        let finalAnalysis = analysis;
-        if (smartParams.analysis) {
-          finalAnalysis = analysis ? { ...analysis, ...smartParams.analysis } : (smartParams.analysis as any);
-          setAnalysis(finalAnalysis);
-        }
+        // Update the message in real-time
+        setChatMessages(prev => prev.map(m => m.id === typingId ? { ...m, content: replyPart } : m));
         
-        let finalConfig = config;
-        if (smartParams.config) {
-          finalConfig = { ...config, ...smartParams.config };
-          setConfig(finalConfig);
-        }
+        setTimeout(() => {
+          chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      }
 
-        setStep('generating');
-        setIsGenerating(true);
+      // Stream is done, parse action if [ACTION] exists
+      const actionIdx = accumulatedText.indexOf('[ACTION]');
+      if (actionIdx !== -1) {
+        let actionPart = accumulatedText.substring(actionIdx + 8).trim();
+        // Remove possible markdown quotes around JSON block
+        if (actionPart.startsWith('```json')) {
+          actionPart = actionPart.substring(7);
+        }
+        if (actionPart.endsWith('```')) {
+          actionPart = actionPart.substring(0, actionPart.length - 3);
+        }
+        actionPart = actionPart.trim();
+
+        let parsedAction: any = null;
         try {
-          const { imageUrl } = await generateImage(
-            genType,
-            activeImg,
-            modelBase64 || null,
-            sceneBase64 || null,
-            finalAnalysis || { productName: '商品', category: '服装', style: '简约', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' },
-            {
-              ...finalConfig,
-              isCustomScene: !!sceneBase64 && !selectedPresetId,
-            },
-            userId,
-            toolId
-          );
-          setGeneratedImages(prev => ({ ...prev, [genType]: imageUrl }));
-          setStep('done');
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + `\n\n🎨 **AI 生图已成功完成！**`,
-            generatedImageUrl: imageUrl,
-            actionSuccess: true
-          } : m));
-          callLaunch(userId, toolId, true);
-        } catch (err: any) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + `\n\n❌ **生图生成失败:** ${err.message}`,
-            actionSuccess: false
-          } : m));
-          setStep('result');
-        }
-        setIsGenerating(false);
-      } 
-      else if (action === 'generate_custom' && customParams) {
-        const cPrompt = customParams.prompt;
-        setCustomPrompt(cPrompt);
-        const cRes = customParams.resolution || customResolution;
-        setCustomResolution(cRes);
-
-        if (!userId || !toolId) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + '\n\n*(提示：检测到需要自由生图，但当前运行环境未绑定 SaaS 平台账户身份 (userId/toolId 缺失)，无法扣除积分及上传云存证，因此暂时无法触发真实生图。请在 SaaS 平台主站内启动此工具进行真实图片生成。)*',
-            actionSuccess: false
-          } : m));
-          setIsChatLoading(false);
-          return;
+          parsedAction = JSON.parse(actionPart);
+        } catch (e) {
+          console.error("Failed to parse action JSON:", e, actionPart);
         }
 
-        setIsGenerating(true);
-        setCustomResult('');
-        try {
-          const { imageUrl } = await generateCustomImage(cPrompt, activeImg || null, userId, toolId, cRes);
-          setCustomResult(imageUrl);
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
+        if (parsedAction) {
+          const { action, actionExplanation, smartParams, customParams, configParams } = parsedAction;
+
+          // Update message metadata
+          setChatMessages(prev => prev.map(m => m.id === typingId ? {
             ...m,
-            content: m.content + `\n\n🎨 **自由生图已顺利完成！**`,
-            generatedImageUrl: imageUrl,
-            actionSuccess: true
+            actionType: action,
+            actionExplanation
           } : m));
-          callLaunch(userId, toolId, true);
-        } catch (err: any) {
-          setChatMessages(prev => prev.map(m => m.id === newAssistantMsg.id ? {
-            ...m,
-            content: m.content + `\n\n❌ **自由生图创作失败:** ${err.message}`,
-            actionSuccess: false
-          } : m));
+
+          // Run the action:
+          if (action === 'analyze_image') {
+            if (!activeImg) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + '\n\n*(提示：请先在对话框中上传单品原图再进行分析)*',
+                actionSuccess: false
+              } : m));
+              setIsChatLoading(false);
+              return;
+            }
+            setStep('analyzing');
+            try {
+              const analyzed = await analyzeImage(activeImg, selectedType);
+              setAnalysis(analyzed);
+              setConfig(prev => ({
+                ...prev,
+                garmentCategory: analyzed.category || '',
+                garmentColor: analyzed.colors?.join(' ') || '',
+                garmentMaterial: analyzed.materials || '',
+                garmentStyle: analyzed.style || '',
+                modelStyle: analyzed.modelStyle || '',
+                sceneStyle: analyzed.sceneStyle || '',
+                sellingPoint1: analyzed.sellingPoints?.[0] || '',
+                sellingPoint2: analyzed.sellingPoints?.[1] || '',
+                sellingPoint3: analyzed.sellingPoints?.[2] || '',
+                brandName: analyzed.brandName || '',
+                sceneTheme: analyzed.posterTheme || '展示场景',
+              }));
+              setStep('result');
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + `\n\n🎯 **分析完成！**\n- 商品名称: ${analyzed.productName}\n- 品类: ${analyzed.category}\n- 核心材质: ${analyzed.materials}\n- 推荐卖点: ${analyzed.sellingPoints?.join(', ')}`,
+                actionSuccess: true
+              } : m));
+            } catch (err: any) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + `\n\n❌ **分析失败:** ${err.message}`,
+                actionSuccess: false
+              } : m));
+              setStep('upload');
+            }
+          }
+          else if (action === 'update_config' && configParams) {
+            if (configParams.config) {
+              setConfig(prev => ({ ...prev, ...configParams.config }));
+            }
+            if (configParams.analysis) {
+              setAnalysis(prev => prev ? ({ ...prev, ...configParams.analysis }) : (configParams.analysis as any));
+            }
+            setChatMessages(prev => prev.map(m => m.id === typingId ? {
+              ...m,
+              content: m.content + `\n\n⚙️ **生图参数已同步更新！** 您可以在右侧看板中核对细节。`,
+              actionSuccess: true
+            } : m));
+          }
+          else if (action === 'generate_smart' && smartParams) {
+            const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
+              ? newUserMsg.imageUrls 
+              : (activeImg ? [activeImg] : []);
+
+            if (refs.length === 0) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + '\n\n*(提示：请先通过对话框附件或侧边栏上传商品服装原图)*',
+                actionSuccess: false
+              } : m));
+              setIsChatLoading(false);
+              return;
+            }
+
+            if (!userId || !toolId) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + '\n\n*(提示：检测到需要智能生图，但当前运行环境未绑定 SaaS 平台账户身份 (userId/toolId 缺失)，无法扣除积分及上传云存证，因此暂时无法触发真实生图。请在 SaaS 平台主站内启动此工具进行真实图片生成。)*',
+                actionSuccess: false
+              } : m));
+              setIsChatLoading(false);
+              return;
+            }
+
+            const genType = smartParams.type || selectedType;
+            setSelectedType(genType);
+
+            let finalAnalysis = analysis;
+            if (smartParams.analysis) {
+              finalAnalysis = analysis ? { ...analysis, ...smartParams.analysis } : (smartParams.analysis as any);
+              setAnalysis(finalAnalysis);
+            }
+            
+            let finalConfig = config;
+            if (smartParams.config) {
+              finalConfig = { ...config, ...smartParams.config };
+              setConfig(finalConfig);
+            }
+
+            setStep('generating');
+            setIsGenerating(true);
+            try {
+              const imageUrls: string[] = [];
+              for (let i = 0; i < refs.length; i++) {
+                const currentRef = refs[i];
+                const { imageUrl } = await generateImage(
+                  genType,
+                  currentRef,
+                  modelBase64 || null,
+                  sceneBase64 || null,
+                  finalAnalysis || { productName: '商品', category: '服装', style: '简约', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' },
+                  {
+                    ...finalConfig,
+                    aspectRatio: config.aspectRatio,
+                    resolution: customResolution,
+                    isCustomScene: !!sceneBase64 && !selectedPresetId,
+                  },
+                  userId,
+                  toolId
+                );
+                imageUrls.push(imageUrl);
+                if (i === refs.length - 1) {
+                  setGeneratedImages(prev => ({ ...prev, [genType]: imageUrl }));
+                }
+              }
+              setStep('done');
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + `\n\n🎨 **AI 生图已成功完成！**`,
+                generatedImageUrl: imageUrls[0],
+                generatedImageUrls: imageUrls,
+                actionSuccess: true
+              } : m));
+              callLaunch(userId, toolId, true);
+            } catch (err: any) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + `\n\n❌ **生图生成失败:** ${err.message}`,
+                actionSuccess: false
+              } : m));
+              setStep('result');
+            }
+            setIsGenerating(false);
+          }
+          else if (action === 'generate_custom' && customParams) {
+            const cPrompt = customParams.prompt;
+            setCustomPrompt(cPrompt);
+            const cRes = customParams.resolution || customResolution;
+            setCustomResolution(cRes);
+
+            if (!userId || !toolId) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + '\n\n*(提示：检测到需要自由生图，但当前运行环境未绑定 SaaS 平台账户身份 (userId/toolId 缺失)，无法扣除积分及上传云存证，因此暂时无法触发真实生图。请在 SaaS 平台主站内启动此工具进行真实图片生成。)*',
+                actionSuccess: false
+              } : m));
+              setIsChatLoading(false);
+              return;
+            }
+
+            const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
+              ? newUserMsg.imageUrls 
+              : (activeImg ? [activeImg] : []);
+
+            setIsGenerating(true);
+            setCustomResult('');
+            try {
+              const imageUrls: string[] = [];
+              if (refs.length === 0) {
+                const { imageUrl } = await generateCustomImage(cPrompt, null, userId, toolId, cRes);
+                imageUrls.push(imageUrl);
+                setCustomResult(imageUrl);
+              } else {
+                for (let i = 0; i < refs.length; i++) {
+                  const currentRef = refs[i];
+                  const { imageUrl } = await generateCustomImage(cPrompt, currentRef, userId, toolId, cRes);
+                  imageUrls.push(imageUrl);
+                  if (i === refs.length - 1) {
+                    setCustomResult(imageUrl);
+                  }
+                }
+              }
+
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + `\n\n🎨 **自由生图已顺利完成！**`,
+                generatedImageUrl: imageUrls[0],
+                generatedImageUrls: imageUrls,
+                actionSuccess: true
+              } : m));
+              callLaunch(userId, toolId, true);
+            } catch (err: any) {
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                content: m.content + `\n\n❌ **自由生图创作失败:** ${err.message}`,
+                actionSuccess: false
+              } : m));
+            }
+            setIsGenerating(false);
+          }
         }
-        setIsGenerating(false);
       }
 
     } catch (error: any) {
@@ -681,12 +780,15 @@ export default function Page() {
         ? `⚠️ **API Key 无效或未配置**\n\n系统检测到您的 API 密钥配置不正确、已失效或尚未添加。\n\n**解决方法：**\n1. 请点击应用右上角齿轮图标 **Settings (设置)**。\n2. 切换到 **Secrets (密钥)** 选项卡。\n3. 找到或新增名为 \`GEMINI_API_KEY_NEXT\` 或 \`GEMINI_API_KEY\` 的密钥，并填入您的真实、有效的 Google AI Studio API Key。\n4. 保存设置并刷新，然后重新发送即可！`
         : `抱歉，在与 AI 的连接或任务执行过程中出现了错误: ${error.message}。请重试。`;
 
-      setChatMessages(prev => [...prev, {
-        id: `assistant-error-${Date.now()}`,
-        role: 'assistant',
-        content: errorContent,
-        actionSuccess: false
-      }]);
+      setChatMessages(prev => {
+        const filtered = prev.filter(m => m.id !== typingId || m.content.trim() !== '');
+        return [...filtered, {
+          id: `assistant-error-${Date.now()}`,
+          role: 'assistant',
+          content: errorContent,
+          actionSuccess: false
+        }];
+      });
     } finally {
       setIsChatLoading(false);
       setTimeout(() => {
@@ -701,7 +803,7 @@ export default function Page() {
     <div className="min-h-screen bg-[#FDFDFD] dark:bg-slate-950 pb-20">
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-b border-slate-100 dark:border-slate-800 px-10 py-4 flex items-center justify-between sticky top-0 z-50 transition-all">
         <div className="flex items-center gap-10">
-          <div className="flex items-center gap-4 group cursor-pointer">
+          <div className="flex items-center gap-4 group cursor-pointer" onClick={() => setActiveMode('lobby')}>
             <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 group-hover:rotate-6 transition-transform">
               <Sparkles className="w-6 h-6 text-primary-foreground" />
             </div>
@@ -711,43 +813,47 @@ export default function Page() {
             </div>
           </div>
           
-          <nav className="flex items-center p-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100/50">
-             <button 
-               onClick={() => setActiveMode('smart')}
-               className={`px-6 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
-                 activeMode === 'smart' 
-                 ? 'bg-white dark:bg-slate-700 shadow-md text-primary scale-[1.02]' 
-                 : 'text-slate-400 hover:text-slate-600'
-               }`}
-             >
-               智能生图
-             </button>
-             <button 
-               onClick={() => setActiveMode('custom')}
-               className={`px-6 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
-                 activeMode === 'custom' 
-                 ? 'bg-white dark:bg-slate-700 shadow-md text-primary scale-[1.02]' 
-                 : 'text-slate-400 hover:text-slate-600'
-               }`}
-             >
-               自由生图
-             </button>
-             <button 
-               onClick={() => setActiveMode('chat')}
-               className={`px-6 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 flex items-center gap-1.5 ${
-                 activeMode === 'chat' 
-                 ? 'bg-white dark:bg-slate-700 shadow-md text-primary scale-[1.02]' 
-                 : 'text-slate-400 hover:text-slate-600'
-               }`}
-             >
-               <MessageSquare className="w-3.5 h-3.5 animate-pulse" />
-               AI 对话生图
-             </button>
-          </nav>
+          {activeMode !== 'lobby' && (
+            <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveMode('lobby')}
+                className="gap-2 text-xs font-black text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border border-slate-200/60 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3.5 py-2 transition-all shadow-sm"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                返回入口大厅
+              </Button>
+
+              <nav className="flex items-center p-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100/50">
+                 <button 
+                   onClick={() => setActiveMode('normal')}
+                   className={`px-8 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                     activeMode === 'normal' 
+                     ? 'bg-white dark:bg-slate-700 shadow-md text-primary scale-[1.02]' 
+                     : 'text-slate-400 hover:text-slate-600'
+                   }`}
+                 >
+                   正常生图
+                 </button>
+                 <button 
+                   onClick={() => setActiveMode('chat')}
+                   className={`px-8 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 flex items-center gap-1.5 ${
+                     activeMode === 'chat' 
+                     ? 'bg-white dark:bg-slate-700 shadow-md text-primary scale-[1.02]' 
+                     : 'text-slate-400 hover:text-slate-600'
+                   }`}
+                 >
+                   <MessageSquare className="w-3.5 h-3.5 animate-pulse" />
+                   AI 对话生图
+                 </button>
+              </nav>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-8">
-          {activeMode === 'smart' && (
+          {activeMode === 'normal' && normalSubMode === 'smart' && (
             <div className="hidden xl:flex items-center gap-6">
               <div className="flex items-center gap-3">
                 <span className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${step === 'upload' ? 'text-primary' : 'text-slate-300'}`}>01 Upload</span>
@@ -802,8 +908,164 @@ export default function Page() {
           </div>
         )}
 
-        {activeMode === 'smart' && (
-          <>
+        {activeMode === 'lobby' && (
+          <div className="max-w-6xl mx-auto py-12 px-4 animate-in fade-in zoom-in-95 duration-700">
+            {/* Lobby Hero section */}
+            <div className="text-center mb-16 space-y-4">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-[0.2em] mb-4">
+                <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
+                欢迎来到 FashionAI 创意生图工坊
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                请选择您的创意生成入口
+              </h2>
+              <p className="text-slate-400 dark:text-slate-500 font-medium max-w-2xl mx-auto text-sm md:text-base tracking-normal">
+                通过精密的数据参数对服装原衣进行极致的商业重塑，或使用强大的 AI 对话助手进行敏捷多轮交互式创作。
+              </p>
+            </div>
+
+            {/* Selection Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              
+              {/* Card 1: Normal mode */}
+              <div 
+                onClick={() => {
+                  setActiveMode('normal');
+                  setNormalSubMode('smart');
+                }}
+                className="group relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] p-8 md:p-10 shadow-xl shadow-slate-100/40 dark:shadow-none hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:border-primary/40 cursor-pointer transition-all duration-500 hover:-translate-y-1.5 flex flex-col justify-between min-h-[480px]"
+              >
+                <div className="space-y-6">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500 shadow-sm">
+                    <Sliders className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-wide mb-2 flex items-center gap-2">
+                      正常高级生图
+                      <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full">PRO</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                      精密模板参数细粒度控制 · 自由文本创作驱动
+                    </p>
+                  </div>
+                  
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    适合对衣服的款式特点、面料纤维、模特属性及环境光影有明确精细化要求的专业设计师与时尚买手。
+                  </p>
+
+                  <ul className="space-y-3.5 pt-4">
+                    <li className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span><strong>智能分析</strong>：上传衣服一键提取核心卖点、类目及面料材质</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span><strong>多场景选择</strong>：六大经典商业预设场景（法式庄园、北欧家居、大理石艺术等）</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span><strong>高清画质</strong>：提供 1k、2k、4k 分辨率和多种主流电商图比例</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-8 mt-6 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-primary tracking-widest group-hover:translate-x-1 transition-transform">
+                    进入专业工作台 →
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                    <Wand2 className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Chat mode */}
+              <div 
+                onClick={() => {
+                  setActiveMode('chat');
+                }}
+                className="group relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] p-8 md:p-10 shadow-xl shadow-slate-100/40 dark:shadow-none hover:shadow-2xl hover:shadow-slate-200/50 dark:hover:border-primary/40 cursor-pointer transition-all duration-500 hover:-translate-y-1.5 flex flex-col justify-between min-h-[480px]"
+              >
+                <div className="space-y-6">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-500 shadow-sm relative">
+                    <MessageSquare className="w-7 h-7" />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-wide mb-2 flex items-center gap-2">
+                      AI 对话智能生图
+                      <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">INTELLIGENT</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                      多轮自然语言交互 · 双向智能看板联动
+                    </p>
+                  </div>
+                  
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    全程使用中文与您的私人时尚 AI 设计助理对话，支持多轮润色、实时修改参数和敏捷绘图，创意无拘无束。
+                  </p>
+
+                  <ul className="space-y-3.5 pt-4">
+                    <li className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span><strong>流式实时反馈</strong>：AI 助理生成极速响应，实时流式打字输出设计理念</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span><strong>双向状态同步</strong>：对话中所作的调整（如“换成沙滩背景”）将实时同步至参数看板</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      <span><strong>自然图文分析</strong>：可以直接通过回形针按钮发送图片并指示助理进行分析与定制</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-8 mt-6 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-primary tracking-widest group-hover:translate-x-1 transition-transform">
+                    进入 AI 对话设计室 →
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {activeMode === 'normal' && (
+          <div className="space-y-6">
+            {/* Elegant Inner Sub-mode Tabs */}
+            <div className="flex justify-center my-4 animate-in fade-in duration-500">
+              <div className="flex p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur rounded-2xl border border-slate-200/20 shadow-inner">
+                <button
+                  onClick={() => setNormalSubMode('smart')}
+                  className={`px-6 py-2.5 rounded-[12px] text-xs font-black tracking-wider uppercase transition-all duration-300 ${
+                    normalSubMode === 'smart'
+                    ? 'bg-white dark:bg-slate-700 text-primary shadow-md scale-[1.02]'
+                    : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  智能参数生图
+                </button>
+                <button
+                  onClick={() => setNormalSubMode('custom')}
+                  className={`px-6 py-2.5 rounded-[12px] text-xs font-black tracking-wider uppercase transition-all duration-300 ${
+                    normalSubMode === 'custom'
+                    ? 'bg-white dark:bg-slate-700 text-primary shadow-md scale-[1.02]'
+                    : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  自由文本生图
+                </button>
+              </div>
+            </div>
+
+            {normalSubMode === 'smart' && (
+              <>
             {step === 'upload' && (
               <div className="max-w-4xl mx-auto py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="relative group p-1.5 rounded-[56px] bg-gradient-to-br from-slate-100 to-transparent dark:from-slate-800">
@@ -1217,7 +1479,7 @@ export default function Page() {
         </>
         )}
 
-        {activeMode === 'custom' && (
+        {normalSubMode === 'custom' && (
           <div className="max-w-4xl mx-auto space-y-12 py-10 animate-in fade-in slide-in-from-bottom-8">
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-[28px] flex items-center justify-center mb-6">
@@ -1337,44 +1599,48 @@ export default function Page() {
             )}
           </div>
         )}
+          </div>
+        )}
 
         {activeMode === 'chat' && (
-          <div className="max-w-[1400px] mx-auto py-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Left Panel: Chat Session (7 cols) */}
-              <div className="lg:col-span-7 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none min-h-[680px]">
-                {/* Chat Header */}
-                <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                      <MessageSquare className="w-4 h-4 animate-pulse" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black tracking-wider uppercase">FashionAI 创意助理</h3>
-                      <p className="text-[10px] text-slate-400 font-medium">智能多轮对话 · 自动调用生图与微调模块</p>
-                    </div>
+          <div className="max-w-4xl mx-auto py-6 px-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none min-h-[700px]">
+              {/* Chat Header */}
+              <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <MessageSquare className="w-4 h-4 animate-pulse" />
                   </div>
-                  {/* Sync Indicator */}
-                  <div className="flex items-center gap-2">
-                     {imageBase64 ? (
-                       <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-                         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                         <span className="text-[9px] font-black uppercase text-green-600 tracking-wider">单品原图已载入</span>
-                       </div>
-                     ) : (
-                       <button 
-                         onClick={() => chatAttachmentRef.current?.click()}
-                         className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-[9px] font-black uppercase tracking-wider rounded-full transition-all"
-                       >
-                         上传商品图
-                       </button>
-                     )}
+                  <div>
+                    <h3 className="text-sm font-black tracking-wider uppercase">FashionAI 创意助理</h3>
+                    <p className="text-[10px] text-slate-400 font-medium">多轮对话流式助理 · 精准生成与细节设计</p>
                   </div>
                 </div>
+                {/* Sync Indicator */}
+                <div className="flex items-center gap-2">
+                   {imageBase64 ? (
+                     <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
+                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                       <span className="text-[9px] font-black uppercase text-green-600 tracking-wider">参考底图已载入</span>
+                     </div>
+                   ) : (
+                     <button 
+                       onClick={() => chatAttachmentRef.current?.click()}
+                       className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-[9px] font-black uppercase tracking-wider rounded-full transition-all"
+                     >
+                       上传参考图
+                     </button>
+                   )}
+                </div>
+              </div>
 
-                {/* Messages Box */}
-                <div className="flex-1 p-8 overflow-y-auto space-y-6 max-h-[500px]">
-                  {chatMessages.map((msg) => (
+              {/* Messages Box */}
+              <div className="flex-1 p-8 overflow-y-auto space-y-6 max-h-[550px]">
+                {chatMessages.map((msg) => {
+                  if (msg.role === 'assistant' && !msg.content && !msg.generatedImageUrl) {
+                    return null;
+                  }
+                  return (
                     <div 
                       key={msg.id} 
                       className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -1385,241 +1651,345 @@ export default function Page() {
                         </div>
                       )}
 
-                      <div className={`max-w-[80%] flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                        {msg.imageUrl && (
-                          <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-md max-w-[200px] mb-1 bg-slate-50">
-                            <img src={msg.imageUrl} alt="Uploaded attachment" className="w-full object-cover max-h-[200px]" />
-                          </div>
-                        )}
-
-                        <div className={`p-5 rounded-[24px] text-sm leading-relaxed whitespace-pre-wrap font-medium shadow-sm ${
-                          msg.role === 'user' 
-                          ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800'
-                        }`}>
-                          {msg.content}
-                        </div>
-
-                        {msg.generatedImageUrl && (
-                          <div className="mt-3 border-2 border-primary/20 rounded-[28px] overflow-hidden shadow-lg hover:border-primary/50 transition-all max-w-[320px] bg-slate-100">
-                            <div className="relative group">
-                              <img src={msg.generatedImageUrl} alt="AI Generated outcome" className="w-full object-cover aspect-[3/4]" />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                <Button 
-                                  size="sm" 
-                                  className="rounded-full bg-white hover:bg-slate-50 text-slate-900"
-                                  onClick={() => {
-                                    if (customResult === msg.generatedImageUrl) {
-                                      // Already customResult
-                                    } else {
-                                      setCustomResult(msg.generatedImageUrl);
-                                      setCustomPrompt(msg.content);
-                                    }
-                                    const smartKey = Object.keys(generatedImages).find(k => generatedImages[k] === msg.generatedImageUrl);
-                                    if (smartKey) {
-                                      setSelectedType(smartKey);
-                                    }
-                                  }}
-                                >
-                                  <Maximize2 className="w-3.5 h-3.5 mr-1" />
-                                  设为主要预览
-                                </Button>
+                      <div className={`max-w-[85%] flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      {/* User uploaded multi-images rendering */}
+                      {msg.imageUrls && msg.imageUrls.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-1 justify-end">
+                          {msg.imageUrls.map((url: string, i: number) => (
+                            <div 
+                              key={i} 
+                              className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-md max-w-[150px] bg-slate-50 relative group cursor-pointer"
+                              onClick={() => setActiveChatPreviewUrl(url)}
+                            >
+                              <img src={url} alt={`Uploaded attachment ${i + 1}`} className="w-full object-cover max-h-[150px] group-hover:scale-105 transition-transform duration-300" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <Maximize2 className="w-4 h-4 text-white hover:scale-110 transition-transform" />
                                 <a 
-                                  href={msg.generatedImageUrl} 
-                                  download="generated.jpg"
-                                  className="p-2 bg-white rounded-full text-slate-900 hover:scale-105 transition-transform"
+                                  href={url} 
+                                  download={`original_reference_${i + 1}_${Date.now()}.jpg`}
+                                  className="p-1 bg-white/20 hover:bg-white/40 rounded-lg text-white hover:scale-110 transition-transform"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Download className="w-4 h-4 text-white" />
                                 </a>
                               </div>
                             </div>
-                            <div className="p-3 bg-white dark:bg-slate-900 text-[10px] font-black tracking-wider uppercase text-slate-400 text-center border-t dark:border-slate-800">
-                              点击大图可以在右侧高级工作台深度编辑或生成视频
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {msg.role === 'user' && (
-                        <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 shrink-0 self-start font-black text-[10px]">
-                          ME
+                          ))}
                         </div>
                       )}
-                    </div>
-                  ))}
 
-                  {isChatLoading && (
-                    <div className="flex gap-4 justify-start">
-                      <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 self-start animate-spin">
-                        <Loader2 className="w-4 h-4" />
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800 text-slate-400 p-5 rounded-[24px] rounded-tl-none border border-slate-100 dark:border-slate-800 text-sm flex items-center gap-2">
-                        <span className="animate-pulse">FashionAI 正在构思和渲染，请稍候...</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div ref={chatScrollRef} />
-                </div>
-
-                {/* Input Box */}
-                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                  <form onSubmit={handleChatSend} className="relative flex items-center gap-3">
-                    {chatImageBase64 && (
-                      <div className="absolute left-4 -top-20 p-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-3 duration-300">
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border">
-                          <img src={chatImageBase64} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-slate-700 dark:text-slate-300">新单品已暂存</span>
-                          <span className="text-[8px] text-slate-400">发送后作为主参考图</span>
-                        </div>
-                        <button 
-                          type="button" 
-                          onClick={() => setChatImageBase64('')} 
-                          className="p-1 text-slate-400 hover:text-slate-600 rounded-full bg-slate-100 dark:bg-slate-700 ml-2"
+                      {/* Single fallback user attachment */}
+                      {msg.imageUrl && (!msg.imageUrls || msg.imageUrls.length === 0) && (
+                        <div 
+                          className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-md max-w-[200px] mb-1 bg-slate-50 relative group cursor-pointer"
+                          onClick={() => setActiveChatPreviewUrl(msg.imageUrl || '')}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                          <img src={msg.imageUrl} alt="Uploaded attachment" className="w-full object-cover max-h-[200px] group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Maximize2 className="w-4 h-4 text-white hover:scale-110 transition-transform" />
+                            <a 
+                              href={msg.imageUrl} 
+                              download={`original_reference_${Date.now()}.jpg`}
+                              className="p-1 bg-white/20 hover:bg-white/40 rounded-lg text-white hover:scale-110 transition-transform"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Download className="w-4 h-4 text-white" />
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className={`p-5 rounded-[24px] text-sm leading-relaxed whitespace-pre-wrap font-medium shadow-sm ${
+                        msg.role === 'user' 
+                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800'
+                      }`}>
+                        {msg.content}
+                      </div>
+
+                      {/* AI Generated image(s) in chat bubble with direct preview and download */}
+                      {msg.generatedImageUrls && msg.generatedImageUrls.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 max-w-[650px] w-full">
+                          {msg.generatedImageUrls.map((gUrl: string, idx: number) => (
+                            <div key={idx} className="border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-xl hover:shadow-2xl transition-all bg-slate-50 dark:bg-slate-900 group">
+                              <div className="relative cursor-pointer overflow-hidden" onClick={() => setActiveChatPreviewUrl(gUrl)}>
+                                <img 
+                                  src={gUrl} 
+                                  alt={`AI Generated outcome ${idx + 1}`} 
+                                  className="w-full object-cover aspect-[3/4] group-hover:scale-[1.02] transition-transform duration-500" 
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                  <span className="px-4 py-2 bg-white/95 text-slate-900 text-xs font-black rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                                    <Maximize2 className="w-3.5 h-3.5 animate-pulse" />
+                                    点击预览
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Details & Download bar */}
+                              <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                                    {config.aspectRatio || '3:4'} • {customResolution || '2k'} 画质 ({idx + 1}/{msg.generatedImageUrls.length})
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-medium">商业级广告渲染</span>
+                                </div>
+                                <a 
+                                  href={gUrl} 
+                                  download={`fashion_ai_${idx + 1}_${Date.now()}.jpg`}
+                                  className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 shadow-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Download className="w-3 h-3" />
+                                  下载
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        msg.generatedImageUrl && (
+                          <div className="mt-3 border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-xl hover:shadow-2xl transition-all max-w-[400px] bg-slate-50 dark:bg-slate-900 group">
+                            <div className="relative cursor-pointer overflow-hidden" onClick={() => setActiveChatPreviewUrl(msg.generatedImageUrl)}>
+                              <img 
+                                src={msg.generatedImageUrl} 
+                                alt="AI Generated outcome" 
+                                className="w-full object-cover aspect-[3/4] group-hover:scale-[1.02] transition-transform duration-500" 
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <span className="px-4 py-2 bg-white/95 text-slate-900 text-xs font-black rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                                  <Maximize2 className="w-3.5 h-3.5 animate-pulse" />
+                                  点击预览高清图
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Details & Download bar */}
+                            <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                                  {config.aspectRatio || '3:4'} • {customResolution || '2k'} 画质
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-medium">商业级广告渲染</span>
+                              </div>
+                              <a 
+                                href={msg.generatedImageUrl} 
+                                download={`fashion_ai_${Date.now()}.jpg`}
+                                className="px-4 py-2 bg-primary/10 hover:bg-primary text-primary hover:text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                下载原图
+                              </a>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    {msg.role === 'user' && (
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 shrink-0 self-start font-black text-[10px]">
+                        ME
                       </div>
                     )}
+                  </div>
+                );
+                })}
 
-                    <button 
-                      type="button" 
-                      onClick={() => chatAttachmentRef.current?.click()}
-                      className="p-3.5 text-slate-400 hover:text-primary rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-                      title="添加服装图片"
-                    >
-                      <Upload className="w-5 h-5" />
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={chatAttachmentRef} 
-                      className="hidden" 
-                      accept="image/*" 
-                      onChange={handleChatAttachment} 
-                    />
+                {isChatLoading && (
+                  <div className="flex gap-4 justify-start">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 self-start animate-spin">
+                      <Loader2 className="w-4 h-4" />
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800 text-slate-400 p-5 rounded-[24px] rounded-tl-none border border-slate-100 dark:border-slate-800 text-sm flex items-center gap-2">
+                      <span className="animate-pulse">FashionAI 正在构思和渲染，请稍候...</span>
+                    </div>
+                  </div>
+                )}
 
-                    <input 
-                      type="text" 
-                      className="flex-1 px-5 py-4 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm placeholder:text-slate-300 font-medium"
-                      placeholder={imageBase64 ? "例如: '我想做一张沙滩上的模特场景图'..." : "请点击回形针先上传一件商品服装原图..."}
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      disabled={isChatLoading}
-                    />
-                    
-                    <button 
-                      type="submit" 
-                      disabled={isChatLoading || (!chatInput.trim() && !chatImageBase64)}
-                      className="px-6 py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary/95 shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none transition-all flex items-center gap-2 shrink-0"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      发送
-                    </button>
-                  </form>
-                </div>
+                <div ref={chatScrollRef} />
               </div>
 
-              {/* Right Panel: Active Canvas & Config Sandbox (5 cols) */}
-              <div className="lg:col-span-5 space-y-8">
-                {/* Visual Sandbox Stage */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] p-8 shadow-2xl shadow-slate-200/50 dark:shadow-none space-y-6">
-                  <div className="flex items-center justify-between border-b pb-4 dark:border-slate-800">
-                    <div>
-                      <h4 className="text-sm font-black tracking-wider uppercase">创意生图沙盒预览</h4>
-                      <p className="text-[9px] text-slate-400 font-medium">当前活跃图像成果及其参数细节</p>
+              {/* Chat Input & Config Controls */}
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                
+                {/* Smart Suggestion Tags */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {[
+                    '帮我做一张卖点图，突出面料舒适',
+                    '我想生成欧美女模，背景设定在咖啡馆',
+                    '自由构思：挂在山顶枯木上，荒野孤寂冷色调',
+                    '分析并提取这件衣服的设计特点',
+                    '生成一张3:4的极简北欧家居背景图'
+                  ].map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setChatInput(item)}
+                      className="px-3 py-1.5 bg-white dark:bg-slate-850 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100/80 dark:border-slate-800 rounded-xl text-[10px] font-bold text-slate-500 hover:text-primary transition-all text-left shadow-sm"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Persistent Params Bar */}
+                <div className="mb-4 flex flex-wrap items-center gap-6 text-xs bg-white dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-100/60 dark:border-slate-800/80 shadow-sm">
+                  {/* Ratio parameter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">常驻尺寸:</span>
+                    <div className="flex bg-slate-100/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-100/50 dark:border-slate-705">
+                      {([
+                        { ratio: '1:1', label: '1:1 正方形' },
+                        { ratio: '3:4', label: '3:4 经典人像' },
+                        { ratio: '9:16', label: '9:16 电商竖屏' }
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.ratio}
+                          type="button"
+                          onClick={() => setConfig({ ...config, aspectRatio: opt.ratio })}
+                          className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${
+                            config.aspectRatio === opt.ratio
+                              ? 'bg-white dark:bg-slate-700 text-primary shadow-sm scale-105'
+                              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Generated Image or Reference State */}
-                  {customResult || generatedImages[selectedType] ? (
-                    <div className="space-y-6">
-                      <div className="flex justify-center w-full">
-                        <ResultCard 
-                          type={generatedImages[selectedType] ? selectedType : 'custom'} 
-                          imgSrc={generatedImages[selectedType] || customResult} 
-                          analysis={analysis || { productName: '新定义商品', category: '服装', style: '定制创意', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' }} 
-                          userId={userId}
-                          toolId={toolId}
-                          config={config}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="aspect-[3/4] border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[28px] flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-800/10">
-                      <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 dark:text-slate-600 mb-4">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                      <h5 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">等待画布渲染</h5>
-                      <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                        在对话中命令 AI 生成，或者使用下方建议指令开始您的首次创作。
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Smart Suggestion Tags */}
-                  <div className="space-y-3 pt-2">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">试试这些对话指令:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        '帮我做一张卖点图，突出面料舒适',
-                        '我想生成欧美女模，背景设定在咖啡馆',
-                        '自由构思：挂在山顶枯木上，荒野孤寂冷色调',
-                        '帮我分析这件衣服',
-                        '换成高清4K分辨率'
-                      ].map((item, idx) => (
+                  {/* Resolution parameter */}
+                  <div className="flex items-center gap-2 border-l border-slate-100 dark:border-slate-800 pl-6">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">清晰度分级:</span>
+                    <div className="flex bg-slate-100/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-100/50 dark:border-slate-705">
+                      {([
+                        { res: '1k', label: '1K 标清' },
+                        { res: '2k', label: '2K 高清' },
+                        { res: '4k', label: '4K 超清' }
+                      ] as const).map((opt) => (
                         <button
-                          key={idx}
+                          key={opt.res}
                           type="button"
-                          onClick={() => setChatInput(item)}
-                          className="px-3 py-2 bg-slate-50 hover:bg-primary/5 dark:bg-slate-800 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-700 rounded-xl text-[10px] font-bold text-slate-500 hover:text-primary transition-all text-left"
+                          onClick={() => setCustomResolution(opt.res)}
+                          className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${
+                            customResolution === opt.res
+                              ? 'bg-white dark:bg-slate-700 text-primary shadow-sm scale-105'
+                              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                          }`}
                         >
-                          {item}
+                          {opt.label}
                         </button>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Live Parameters Panel */}
-                {analysis && (
-                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] p-8 shadow-2xl shadow-slate-200/50 dark:shadow-none space-y-6 animate-in fade-in duration-500">
-                    <div className="border-b pb-4 dark:border-slate-800">
-                      <h4 className="text-sm font-black tracking-wider uppercase">实时设计参数同步 (Live Sandbox)</h4>
-                      <p className="text-[9px] text-slate-400 font-medium">由 AI 对话智能抽取的参数状态，随谈话实时改变</p>
+                <form onSubmit={handleChatSend} className="relative flex items-center gap-3">
+                  {/* Prepared multi-images thumbnail drawer */}
+                  {chatImages.length > 0 && (
+                    <div className="absolute left-4 -top-24 p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-3 duration-300 overflow-x-auto max-w-[calc(100%-2rem)] z-20">
+                      {chatImages.map((imgData, idx) => (
+                        <div key={idx} className="relative w-14 h-14 rounded-xl overflow-hidden border group shrink-0">
+                          <img src={imgData} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setChatImages(prev => prev.filter((_, i) => i !== idx))}
+                            className="absolute top-0.5 right-0.5 p-1 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                            title="删除此图"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <div className="flex flex-col pr-2 justify-center shrink-0">
+                        <span className="text-[10px] font-black text-slate-700 dark:text-slate-300">
+                          已准备 {chatImages.length} 张图片
+                        </span>
+                        <span className="text-[8px] text-slate-400">将作为参考图共同上传</span>
+                      </div>
                     </div>
+                  )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-50 dark:border-slate-800">
-                        <span className="block text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">商品类别</span>
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">{analysis.category || '未定义'}</span>
-                      </div>
-                      <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-50 dark:border-slate-800">
-                        <span className="block text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">服装风格</span>
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">{analysis.style || '简约'}</span>
-                      </div>
-                      <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-50 dark:border-slate-800">
-                        <span className="block text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">模特属性</span>
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">{config.modelStyle || '欧美国际超模'}</span>
-                      </div>
-                      <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-50 dark:border-slate-800">
-                        <span className="block text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">背景风格</span>
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">{config.sceneStyle || '棚拍极简'}</span>
-                      </div>
-                    </div>
+                  <button 
+                    type="button" 
+                    onClick={() => chatAttachmentRef.current?.click()}
+                    className="p-3.5 text-slate-400 hover:text-primary rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    title="添加服装图片 (支持多张)"
+                  >
+                    <Upload className="w-5 h-5" />
+                  </button>
+                  <input 
+                    type="file" 
+                    ref={chatAttachmentRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    multiple
+                    onChange={handleChatAttachment} 
+                  />
 
-                    <div className="space-y-2">
-                      <span className="block text-[8px] font-black uppercase tracking-widest text-slate-400">主要色彩配方</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {analysis.colors?.map((col, i) => (
-                          <span key={i} className="px-2.5 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[10px] font-bold text-primary">{col}</span>
-                        )) || <span className="text-[10px] text-slate-300">无颜色标签</span>}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  <input 
+                    type="text" 
+                    className="flex-1 px-5 py-4 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm placeholder:text-slate-300 font-medium"
+                    placeholder={imageBase64 || chatImages.length > 0 ? "例如: '我想做一张沙滩上的模特场景图'..." : "请点击回形针先上传一件或多张服装原图..."}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    disabled={isChatLoading}
+                  />
+                  
+                  <button 
+                    type="submit" 
+                    disabled={isChatLoading || (!chatInput.trim() && chatImages.length === 0)}
+                    className="px-6 py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary/95 shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none transition-all flex items-center gap-2 shrink-0"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    发送
+                  </button>
+                </form>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeChatPreviewUrl && (
+          <div 
+            className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4 md:p-10 animate-in fade-in duration-300"
+            onClick={() => setActiveChatPreviewUrl('')}
+          >
+            <div className="relative max-w-[95vw] max-h-[85vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+              <img 
+                src={activeChatPreviewUrl} 
+                alt="FashionAI Generated Outcome Preview" 
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300" 
+              />
+              
+              <Button 
+                variant="secondary"
+                size="icon"
+                className="absolute -top-4 -right-4 md:top-6 md:right-6 w-12 h-12 rounded-full shadow-2xl border border-white/10 backdrop-blur-md bg-black/40 hover:bg-black/60 text-white transition-all hover:scale-105 z-[130]"
+                onClick={() => setActiveChatPreviewUrl('')}
+              >
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+
+            <div className="mt-8 flex items-center gap-4 z-[130]" onClick={(e) => e.stopPropagation()}>
+              <a 
+                href={activeChatPreviewUrl} 
+                download={`fashion_ai_${Date.now()}.jpg`}
+                className="px-6 py-3 bg-primary text-white font-black text-sm uppercase tracking-wider rounded-2xl hover:bg-primary/95 shadow-xl shadow-primary/25 transition-all flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                下载超清原图
+              </a>
+              <Button 
+                variant="outline"
+                onClick={() => setActiveChatPreviewUrl('')}
+                className="px-6 py-3 border border-slate-200/60 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-850 transition-all"
+              >
+                关闭预览
+              </Button>
             </div>
           </div>
         )}
