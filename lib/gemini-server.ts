@@ -326,20 +326,20 @@ function buildPrompt(
   } else {
     if (hasModelImage) {
       basePrompt = `【面孔复刻 & 模特融合 - 最高优先级】
-      1. MODEL: Identity and features MUST be exactly the same as Reference Image 1. Pose can be different and dynamic.
-      2. GARMENT: MUST be 100% IDENTICAL to the product in Reference Image 2. Absolutely zero modifications, omissions, or simplifications to design, shape, cuts, collar/neckline shape, sleeve length, stitches, buttons, zippers, pockets, patterns, textures, colors, or details are allowed.
+      1. MODEL: Identity, face, features, body shape, and hair MUST be exactly the same as in "【Image Reference: TARGET MODEL】". You MUST ignore the clothing worn in "【Image Reference: TARGET MODEL】" completely.
+      2. GARMENT: MUST be 100% IDENTICAL to the clothing shown in "【Image Reference: TARGET CLOTHING PRODUCT】". Absolutely zero modifications, omissions, or simplifications to design, shape, cuts, collar/neckline shape, sleeve length, stitches, buttons, zippers, pockets, patterns, textures, colors, or details are allowed. You MUST ignore the person/model in "【Image Reference: TARGET CLOTHING PRODUCT】" and only dress this target clothing onto the model from "【Image Reference: TARGET MODEL】".
       Vibe: ${vars.model_style}.
       Garment: ${garmentDesc}.`;
     } else {
       basePrompt = `【模特上身展示与自适应姿势 - 严禁复制原图模特与分镜】
-      1. GARMENT: MUST be 100% IDENTICAL to the garment shown in the reference product image. Only transfer and wear the clothing (shape, design, fabric, color, patterns) onto the new model.
+      1. GARMENT: MUST be 100% IDENTICAL to the garment shown in "【Image Reference: TARGET CLOTHING PRODUCT】". Only transfer and wear this exact clothing (shape, design, fabric, color, patterns) onto the new model.
       2. NEW MODEL IDENTITY & CHARACTERISTICS (ETHNICITY ADAPTATION):
          - You MUST generate a completely new, professional fashion model who perfectly matches the specified style: "${vars.model_style}".
          - If "${vars.model_style}" contains any specific ethnicity or appearance keyword (such as "欧美", "欧美时尚模特", "欧美超模", "Western", "Caucasian", "blonde", "black", "African", etc.), you MUST generate a model of THAT requested ethnicity and appearance.
-         - DO NOT reuse or clone the face, body, hair, skin color, or ethnicity of any model shown in the reference product image. 
+         - DO NOT reuse or clone the face, body, hair, skin color, or ethnicity of any model shown in "【Image Reference: TARGET CLOTHING PRODUCT】". 
          - The model's face, ethnicity, and pose MUST be generated fully custom-fit to the style: "${vars.model_style}".
       3. POSE VARIATION & DYNAMIC RENDER:
-         - The model MUST have a completely different, natural, and highly professional fashion pose (standing, sitting, walking) that fits the theme. DO NOT copy or replicate the pose from the reference image.
+         - The model MUST have a completely different, natural, and highly professional fashion pose (standing, sitting, walking) that fits the theme. DO NOT copy or replicate the pose from "【Image Reference: TARGET CLOTHING PRODUCT】".
       Garment: ${garmentDesc}.`;
     }
 
@@ -352,7 +352,7 @@ function buildPrompt(
         break;
       case 'scene':
         if (config.isCustomScene) {
-          basePrompt += `\nScene Backdrop: Replicate and maintain the layout, composition, architecture, and colors from the uploaded background reference image. Keep the background 100% consistent.`;
+          basePrompt += `\nScene Backdrop: Replicate and maintain the layout, composition, architecture, and colors from "【Image Reference: TARGET BACKGROUND SCENE】". Keep the background 100% consistent with it.`;
         } else {
           basePrompt += `\nScene Backdrop Theme: ${vars.scene_style || vars.scene_theme}. Professional high-end fashion photography location photoshoot, beautifully integrated with the model.`;
         }
@@ -427,26 +427,28 @@ export async function generateImageServer(
   };
 
   const parts: any[] = [];
-  let sceneIndex = 2; 
   
   if (type === 'main' || !hasModelImage) {
     // Single reference: the product
+    parts.push({ text: "【Image Reference: TARGET CLOTHING PRODUCT (ONLY replicate this garment's design, style, cuts, colors, patterns, and fabrics; ignore the background or person/model wearing it completely)】" });
     parts.push({
       inlineData: extractParts(imageUrlBase64)
     });
   } else {
     // Two references: 1. Model, 2. Product
+    parts.push({ text: "【Image Reference: TARGET MODEL (ONLY replicate this person's face, features, body shape, and hair; ignore their clothing entirely)】" });
     parts.push({
       inlineData: extractParts(modelUrlBase64!)
     });
+    parts.push({ text: "【Image Reference: TARGET CLOTHING PRODUCT (ONLY replicate this garment's design, style, cuts, colors, patterns, and fabrics; ignore the person/model wearing it completely)】" });
     parts.push({
       inlineData: extractParts(imageUrlBase64)
     });
-    sceneIndex = 3;
   }
   
   if (hasSceneImage && type === 'scene') {
-    prompt += `\nBackground MUST be 100% consistent with the aesthetic, layout, and architecture of Reference Image ${sceneIndex}. Seamlessly blend the model/clothing inside with natural shadows, matching lighting, and perfect perspective scaling.`;
+    prompt += `\nBackground MUST be 100% consistent with the aesthetic, layout, and architecture of "【Image Reference: TARGET BACKGROUND SCENE】". Seamlessly blend the model/clothing inside with natural shadows, matching lighting, and perfect perspective scaling.`;
+    parts.push({ text: "【Image Reference: TARGET BACKGROUND SCENE (ONLY replicate this background's layout, composition, scenery, lighting, and environment; ignore any people or foreground objects inside completely)】" });
     parts.push({
       inlineData: extractParts(sceneUrlBase64!)
     });
