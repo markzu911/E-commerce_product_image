@@ -128,6 +128,143 @@ async function compressImage(base64: string, maxWidth = 1200, maxHeight = 1200):
   });
 }
 
+function ChatGenerationCard({ details }: { details: any }) {
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(p => {
+        if (p < 25) return p + Math.floor(Math.random() * 4) + 2;
+        if (p < 55) return p + Math.floor(Math.random() * 3) + 1;
+        if (p < 85) return p + Math.floor(Math.random() * 2) + 1;
+        if (p < 98) return p + 0.5;
+        return p;
+      });
+    }, 450);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (progress < 25) setCurrentStep(0);
+    else if (progress < 55) setCurrentStep(1);
+    else if (progress < 80) setCurrentStep(2);
+    else setCurrentStep(3);
+  }, [progress]);
+
+  const steps = [
+    '解析服装物理材质、经纬织法与特征轮廓...',
+    '构建多视角 3D 特征融合及模特透视骨骼...',
+    '融合高级场景几何构图与多维柔性光影映射...',
+    'AI 色彩校准与 StableDiffusion 广告级像素深度渲染...'
+  ];
+
+  const actionName = details?.action === 'generate_custom' ? '自由创意生图' : 'AI 智能多图场景渲染';
+
+  return (
+    <div className="w-full max-w-[550px] bg-slate-50 dark:bg-slate-900 border border-primary/20 rounded-[28px] p-5 shadow-lg shadow-primary/5 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary animate-spin">
+            <Loader2 className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <span>{actionName}</span>
+              <span className="text-[10px] text-primary font-bold">● CREATING</span>
+            </h4>
+            <p className="text-[9px] text-slate-400 font-medium">FashionAI 智脑图像创意引擎</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 bg-primary/10 text-primary text-[9px] font-black px-2.5 py-1 rounded-full uppercase animate-pulse">
+          <Sparkles className="w-3 h-3" />
+          光影渲染中
+        </div>
+      </div>
+
+      {/* Grid of details */}
+      <div className="grid grid-cols-2 gap-3 bg-white dark:bg-slate-950/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px]">
+        <div className="space-y-0.5">
+          <span className="text-[9px] font-bold text-slate-400 uppercase">渲染画幅</span>
+          <p className="font-black text-slate-700 dark:text-slate-300">{details?.aspectRatio || '3:4'}</p>
+        </div>
+        <div className="space-y-0.5">
+          <span className="text-[9px] font-bold text-slate-400 uppercase">输出分辨率</span>
+          <p className="font-black text-slate-700 dark:text-slate-300">{(details?.resolution || '2k').toUpperCase()} 画质</p>
+        </div>
+        {details?.action === 'generate_smart' ? (
+          <>
+            <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2">
+              <span className="text-[9px] font-bold text-slate-400 uppercase">构思模特风格</span>
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-[10px] leading-tight">
+                {details?.modelStyle || '高阶立体模特 / 真实国潮名模'}
+              </p>
+            </div>
+            <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2">
+              <span className="text-[9px] font-bold text-slate-400 uppercase">场景空间主题</span>
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-[10px] leading-tight">
+                {details?.sceneStyle || '极简光影棚拍 / 创意商业空间'}
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2">
+            <span className="text-[9px] font-bold text-slate-400 uppercase">AI 创意提示词</span>
+            <p className="font-medium text-slate-600 dark:text-slate-400 text-[10px] leading-normal italic line-clamp-2">
+              "{details?.prompt}"
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Progress & Steps list */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between text-[10px] font-bold">
+          <span className="text-slate-400">整体渲染深度进度</span>
+          <span className="text-primary font-black">{Math.floor(progress)}%</span>
+        </div>
+        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-primary via-indigo-500 to-pink-500 transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-1.5 pt-1">
+          {steps.map((stepStr, idx) => {
+            const isCompleted = idx < currentStep;
+            const isActive = idx === currentStep;
+            return (
+              <div key={idx} className="flex items-start gap-2 text-[10px] transition-all">
+                <div className="mt-0.5 shrink-0">
+                  {isCompleted ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                  ) : isActive ? (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  ) : (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-200 dark:border-slate-800" />
+                  )}
+                </div>
+                <span className={`font-medium ${
+                  isCompleted 
+                    ? 'text-slate-400 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-700' 
+                    : isActive 
+                      ? 'text-primary font-bold' 
+                      : 'text-slate-400'
+                }`}>
+                  {stepStr}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   const [step, setStep] = useState<Step>('upload');
   const [imageBase64, setImageBase64] = useState<string>(''); // Product image for smart mode
@@ -152,7 +289,7 @@ export default function Page() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const [activeMode, setActiveMode] = useState<'lobby' | 'normal' | 'chat'>('lobby');
+  const [activeMode, setActiveMode] = useState<'lobby' | 'normal' | 'chat'>('chat');
   const [normalSubMode, setNormalSubMode] = useState<'smart' | 'custom'>('smart');
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [customResolution, setCustomResolution] = useState<'1k' | '2k' | '4k'>('2k');
@@ -162,12 +299,20 @@ export default function Page() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: '您好！我是 FashionAI 智能创意设计师。您可以直接上传服装单品，然后通过对话告诉我您的设计想法，比如：\n\n1. "分析这件衣服的卖点并生成详情图"\n2. "帮我画一张高大上模特在法式庄园里的效果图"\n3. "把色彩方案调亮，背景改用大理石展台"\n4. "自由构思：一件卫衣挂在枯木上，荒漠落日底片"\n\n请在下方输入您的需求或通过回形针按钮上传您的衣服图片，我们即刻开始！'
+      content: '您好！我是您的 **FashionAI 智能创意设计师** 🌸\n\n我们将通过**一问一答的交互式对话**为您量身定制高质感商业大片。\n\n**🎯 简单 2 步，即刻开始：**\n1. 点击左下角 **附件/纸夹按钮**，上传您的单品原图（支持多张）。\n2. 在下方输入您的创意，或点击下方推荐的**新手创作灵感**，AI 会自动为您渲染大片并展示快捷参数调节看板。'
     }
   ]);
   const [chatInput, setChatInput] = useState<string>('');
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
   const [chatImageBase64, setChatImageBase64] = useState<string>('');
+  const [chatConfig, setChatConfig] = useState<PromptConfig>({
+    garmentCategory: '', garmentColor: '', garmentMaterial: '', garmentStyle: '',
+    modelStyle: '', sceneStyle: '', sellingPoint1: '', sellingPoint2: '', sellingPoint3: '',
+    brandName: '', sceneTheme: '', resolution: '2k',
+    aspectRatio: '3:4'
+  });
+  const [chatAnalysis, setChatAnalysis] = useState<AnalysisData | null>(null);
+  const [chatResolution, setChatResolution] = useState<'1k' | '2k' | '4k'>('2k');
   const [chatImages, setChatImages] = useState<string[]>([]);
   const [activeChatPreviewUrl, setActiveChatPreviewUrl] = useState<string>('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -435,17 +580,16 @@ export default function Page() {
     });
   };
 
-  const handleChatSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = chatInput.trim();
+  const handleChatSend = async (e?: React.FormEvent, overrideQuery?: string) => {
+    if (e) e.preventDefault();
+    const query = (overrideQuery !== undefined ? overrideQuery : chatInput).trim();
     if (!query && chatImages.length === 0) return;
 
-    // Determine the current image context
-    let activeImg = imageBase64;
+    // Determine the current image context for chat
+    let activeImg = chatImageBase64;
     if (chatImages.length > 0) {
       activeImg = chatImages[0];
-      setImageBase64(chatImages[0]);
-      setCustomReferenceBase64(chatImages[0]);
+      setChatImageBase64(chatImages[0]);
     }
 
     const newUserMsg = {
@@ -483,8 +627,8 @@ export default function Page() {
           messages: apiMessages,
           imageBase64: activeImg || null,
           imagesBase64: newUserMsg.imageUrls || null,
-          currentConfig: config,
-          currentAnalysis: analysis
+          currentConfig: chatConfig,
+          currentAnalysis: chatAnalysis
         })
       });
 
@@ -578,11 +722,10 @@ export default function Page() {
               setIsChatLoading(false);
               return;
             }
-            setStep('analyzing');
             try {
-              const analyzed = await analyzeImage(activeImg, selectedType);
-              setAnalysis(analyzed);
-              setConfig(prev => ({
+              const analyzed = await analyzeImage(activeImg, 'main');
+              setChatAnalysis(analyzed);
+              setChatConfig(prev => ({
                 ...prev,
                 garmentCategory: analyzed.category || '',
                 garmentColor: analyzed.colors?.join(' ') || '',
@@ -596,7 +739,6 @@ export default function Page() {
                 brandName: analyzed.brandName || '',
                 sceneTheme: analyzed.posterTheme || '展示场景',
               }));
-              setStep('result');
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
                 content: m.content + `\n\n🎯 **分析完成！**\n- 商品名称: ${analyzed.productName}\n- 品类: ${analyzed.category}\n- 核心材质: ${analyzed.materials}\n- 推荐卖点: ${analyzed.sellingPoints?.join(', ')}`,
@@ -608,19 +750,18 @@ export default function Page() {
                 content: m.content + `\n\n❌ **分析失败:** ${err.message}`,
                 actionSuccess: false
               } : m));
-              setStep('upload');
             }
           }
           else if (action === 'update_config' && configParams) {
             if (configParams.config) {
-              setConfig(prev => ({ ...prev, ...configParams.config }));
+              setChatConfig(prev => ({ ...prev, ...configParams.config }));
             }
             if (configParams.analysis) {
-              setAnalysis(prev => prev ? ({ ...prev, ...configParams.analysis }) : (configParams.analysis as any));
+              setChatAnalysis(prev => prev ? ({ ...prev, ...configParams.analysis }) : (configParams.analysis as any));
             }
             setChatMessages(prev => prev.map(m => m.id === typingId ? {
               ...m,
-              content: m.content + `\n\n⚙️ **生图参数已同步更新！** 您可以在右侧看板中核对细节。`,
+              content: m.content + `\n\n⚙️ **生图参数已同步更新！** 您可以在下方互动看版核对或进行下一步渲染。`,
               actionSuccess: true
             } : m));
           }
@@ -632,7 +773,7 @@ export default function Page() {
             if (refs.length === 0) {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
-                content: m.content + '\n\n*(提示：请先通过对话框附件或侧边栏上传商品服装原图)*',
+                content: m.content + '\n\n*(提示：请先通过对话框附件上传商品服装原图)*',
                 actionSuccess: false
               } : m));
               setIsChatLoading(false);
@@ -649,53 +790,62 @@ export default function Page() {
               return;
             }
 
-            const genType = smartParams.type || selectedType;
-            setSelectedType(genType);
+            const genType = smartParams.type || 'main';
 
-            let finalAnalysis = analysis;
+            let finalAnalysis = chatAnalysis;
             if (smartParams.analysis) {
-              finalAnalysis = analysis ? { ...analysis, ...smartParams.analysis } : (smartParams.analysis as any);
-              setAnalysis(finalAnalysis);
+              finalAnalysis = chatAnalysis ? { ...chatAnalysis, ...smartParams.analysis } : (smartParams.analysis as any);
+              setChatAnalysis(finalAnalysis);
             }
             
-            let finalConfig = config;
+            let finalConfig = chatConfig;
             if (smartParams.config) {
-              finalConfig = { ...config, ...smartParams.config };
-              setConfig(finalConfig);
+              finalConfig = { ...chatConfig, ...smartParams.config };
+              setChatConfig(finalConfig);
             }
 
-            setStep('generating');
+            // Trigger visual progress card in chat box
+            setChatMessages(prev => prev.map(m => m.id === typingId ? {
+              ...m,
+              isGeneratingImages: true,
+              generationDetails: {
+                action: 'generate_smart',
+                aspectRatio: chatConfig.aspectRatio,
+                resolution: chatResolution,
+                modelStyle: finalConfig.modelStyle || '高阶立体模特/国风超模',
+                sceneStyle: finalConfig.sceneStyle || '极简高阶棚拍',
+                sceneTheme: finalConfig.sceneTheme || '展示场景'
+              }
+            } : m));
+
             setIsGenerating(true);
             try {
               const imageUrls: string[] = [];
               for (let i = 0; i < refs.length; i++) {
                 const currentRef = refs[i];
                 const { imageUrl } = await generateImage(
-                  genType,
-                  currentRef,
-                  modelBase64 || null,
-                  sceneBase64 || null,
-                  finalAnalysis || { productName: '商品', category: '服装', style: '简约', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' },
-                  {
-                    ...finalConfig,
-                    aspectRatio: config.aspectRatio,
-                    resolution: customResolution,
-                    isCustomScene: !!sceneBase64 && !selectedPresetId,
-                  },
-                  userId,
-                  toolId
+                   genType,
+                   currentRef,
+                   modelBase64 || null,
+                   sceneBase64 || null,
+                   finalAnalysis || { productName: '商品', category: '服装', style: '简约', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' },
+                   {
+                     ...finalConfig,
+                     aspectRatio: chatConfig.aspectRatio,
+                     resolution: chatResolution,
+                     isCustomScene: !!sceneBase64 && !selectedPresetId,
+                   },
+                   userId,
+                   toolId
                 );
                 imageUrls.push(imageUrl);
-                if (i === refs.length - 1) {
-                  setGeneratedImages(prev => ({ ...prev, [genType]: imageUrl }));
-                }
               }
-              setStep('done');
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
                 content: m.content + `\n\n🎨 **AI 生图已成功完成！**`,
                 generatedImageUrl: imageUrls[0],
                 generatedImageUrls: imageUrls,
+                isGeneratingImages: false,
                 actionSuccess: true
               } : m));
               callLaunch(userId, toolId, true);
@@ -703,17 +853,16 @@ export default function Page() {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
                 content: m.content + `\n\n❌ **生图生成失败:** ${err.message}`,
+                isGeneratingImages: false,
                 actionSuccess: false
               } : m));
-              setStep('result');
             }
             setIsGenerating(false);
           }
           else if (action === 'generate_custom' && customParams) {
             const cPrompt = customParams.prompt;
-            setCustomPrompt(cPrompt);
-            const cRes = customParams.resolution || customResolution;
-            setCustomResolution(cRes);
+            const cRes = customParams.resolution || chatResolution;
+            setChatResolution(cRes);
 
             if (!userId || !toolId) {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
@@ -729,22 +878,29 @@ export default function Page() {
               ? newUserMsg.imageUrls 
               : (activeImg ? [activeImg] : []);
 
+            // Trigger visual progress card in chat box
+            setChatMessages(prev => prev.map(m => m.id === typingId ? {
+              ...m,
+              isGeneratingImages: true,
+              generationDetails: {
+                action: 'generate_custom',
+                prompt: cPrompt,
+                resolution: cRes,
+                aspectRatio: chatConfig.aspectRatio
+              }
+            } : m));
+
             setIsGenerating(true);
-            setCustomResult('');
             try {
               const imageUrls: string[] = [];
               if (refs.length === 0) {
                 const { imageUrl } = await generateCustomImage(cPrompt, null, userId, toolId, cRes);
                 imageUrls.push(imageUrl);
-                setCustomResult(imageUrl);
               } else {
                 for (let i = 0; i < refs.length; i++) {
                   const currentRef = refs[i];
                   const { imageUrl } = await generateCustomImage(cPrompt, currentRef, userId, toolId, cRes);
                   imageUrls.push(imageUrl);
-                  if (i === refs.length - 1) {
-                    setCustomResult(imageUrl);
-                  }
                 }
               }
 
@@ -753,6 +909,7 @@ export default function Page() {
                 content: m.content + `\n\n🎨 **自由生图已顺利完成！**`,
                 generatedImageUrl: imageUrls[0],
                 generatedImageUrls: imageUrls,
+                isGeneratingImages: false,
                 actionSuccess: true
               } : m));
               callLaunch(userId, toolId, true);
@@ -760,6 +917,7 @@ export default function Page() {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
                 content: m.content + `\n\n❌ **自由生图创作失败:** ${err.message}`,
+                isGeneratingImages: false,
                 actionSuccess: false
               } : m));
             }
@@ -800,7 +958,7 @@ export default function Page() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] dark:bg-slate-950 pb-20">
+    <div className="bg-[#FDFDFD] dark:bg-slate-950 transition-colors h-screen w-screen overflow-hidden flex flex-col">
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-b border-slate-100 dark:border-slate-800 px-10 py-4 flex items-center justify-between sticky top-0 z-50 transition-all">
         <div className="flex items-center gap-10">
           <div className="flex items-center gap-4 group cursor-pointer" onClick={() => setActiveMode('lobby')}>
@@ -880,7 +1038,7 @@ export default function Page() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto p-4 md:p-8 mt-4">
+      <main className="flex-1 min-h-0 w-full max-w-[1500px] mx-auto px-4 md:px-8 py-3 flex flex-col">
         {statusMsg.type && (
           <div className={`mb-6 p-4 rounded-lg flex items-center justify-between shadow-sm border ${
             statusMsg.type === 'loading' ? 'bg-blue-50 border-blue-200 text-blue-600' :
@@ -909,17 +1067,17 @@ export default function Page() {
         )}
 
         {activeMode === 'lobby' && (
-          <div className="max-w-6xl mx-auto py-12 px-4 animate-in fade-in zoom-in-95 duration-700">
+          <div className="flex-1 min-h-0 overflow-y-auto w-full max-w-6xl mx-auto py-6 px-4 animate-in fade-in zoom-in-95 duration-700">
             {/* Lobby Hero section */}
-            <div className="text-center mb-16 space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-[0.2em] mb-4">
+            <div className="text-center mb-8 space-y-2">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-[0.2em] mb-2">
                 <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
                 欢迎来到 FashionAI 创意生图工坊
               </div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                 请选择您的创意生成入口
               </h2>
-              <p className="text-slate-400 dark:text-slate-500 font-medium max-w-2xl mx-auto text-sm md:text-base tracking-normal">
+              <p className="text-slate-400 dark:text-slate-500 font-medium max-w-2xl mx-auto text-xs md:text-sm tracking-normal">
                 通过精密的数据参数对服装原衣进行极致的商业重塑，或使用强大的 AI 对话助手进行敏捷多轮交互式创作。
               </p>
             </div>
@@ -1037,9 +1195,9 @@ export default function Page() {
         )}
 
         {activeMode === 'normal' && (
-          <div className="space-y-6">
+          <div className="flex-1 min-h-0 flex flex-col space-y-3">
             {/* Elegant Inner Sub-mode Tabs */}
-            <div className="flex justify-center my-4 animate-in fade-in duration-500">
+            <div className="flex justify-center my-2 animate-in fade-in duration-500 shrink-0">
               <div className="flex p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur rounded-2xl border border-slate-200/20 shadow-inner">
                 <button
                   onClick={() => setNormalSubMode('smart')}
@@ -1067,25 +1225,25 @@ export default function Page() {
             {normalSubMode === 'smart' && (
               <>
             {step === 'upload' && (
-              <div className="max-w-4xl mx-auto py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="relative group p-1.5 rounded-[56px] bg-gradient-to-br from-slate-100 to-transparent dark:from-slate-800">
+              <div className="flex-1 min-h-0 overflow-y-auto max-w-4xl mx-auto py-4 w-full flex flex-col justify-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="relative group p-1.5 rounded-[48px] bg-gradient-to-br from-slate-100 to-transparent dark:from-slate-800">
                   <div className="absolute -inset-4 bg-primary/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                  <div className="relative flex flex-col items-center justify-center p-24 border border-slate-100 dark:border-slate-800 rounded-[48px] bg-white dark:bg-slate-900 shadow-2xl shadow-slate-200/50 dark:shadow-none hover:border-primary/20 transition-all cursor-pointer"
+                  <div className="relative flex flex-col items-center justify-center p-12 md:p-16 border border-slate-100 dark:border-slate-800 rounded-[40px] bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none hover:border-primary/20 transition-all cursor-pointer"
                        onClick={() => fileInputRef.current?.click()}>
-                    <div className="w-24 h-24 bg-primary/5 rounded-[40px] flex items-center justify-center mb-10 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-                      <div className="w-16 h-16 bg-primary rounded-[32px] flex items-center justify-center shadow-xl shadow-primary/30">
-                        <Upload className="w-7 h-7 text-white" />
+                    <div className="w-20 h-20 bg-primary/5 rounded-[32px] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                      <div className="w-14 h-14 bg-primary rounded-[24px] flex items-center justify-center shadow-lg shadow-primary/25">
+                        <Upload className="w-6 h-6 text-white" />
                       </div>
                     </div>
-                    <h2 className="text-4xl font-black tracking-tight mb-4 text-center">开始您的 AI 创作之旅</h2>
-                    <p className="text-slate-400 font-medium mb-12 text-center max-w-sm leading-relaxed">
-                      上传服装单品，Gemini 3.1 Pro 将精准捕捉面料、剪裁与风格，定制专属电商视觉大片。
+                    <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2 text-center">开始您的 AI 创作之旅</h2>
+                    <p className="text-slate-400 text-xs font-medium mb-6 text-center max-w-sm leading-relaxed">
+                      上传服装单品，Gemini 3.5 将精准捕捉面料、剪裁与风格，定制专属电商视觉大片。
                     </p>
-                    <Button size="lg" className="rounded-full px-12 h-16 font-black text-lg shadow-2xl shadow-primary/20 group-hover:scale-105 transition-transform">
+                    <Button size="lg" className="rounded-full px-10 h-14 font-black text-base shadow-xl shadow-primary/15 group-hover:scale-105 transition-transform">
                       立即上传单品
                     </Button>
-                    <div className="mt-12 flex items-center gap-4 opacity-30 grayscale">
-                      <span className="text-[10px] font-black uppercase tracking-widest">Supports Jpeg / Png / Webp</span>
+                    <div className="mt-6 flex items-center gap-4 opacity-30 grayscale">
+                      <span className="text-[9px] font-black uppercase tracking-widest">Supports Jpeg / Png / Webp</span>
                     </div>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                   </div>
@@ -1094,57 +1252,57 @@ export default function Page() {
             )}
 
             {step === 'select' && (
-              <div className="max-w-6xl mx-auto py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="text-center mb-16">
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/5 rounded-full border border-primary/10 mb-6">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Creative Direction</span>
+              <div className="flex-1 min-h-0 overflow-y-auto max-w-6xl mx-auto py-4 w-full flex flex-col justify-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="text-center mb-6 shrink-0">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10 mb-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-primary">Creative Direction</span>
                   </div>
-                  <h2 className="text-5xl font-black tracking-tight mb-6">定义输出画幅与风格</h2>
-                  <p className="text-slate-400 font-medium tracking-tight text-lg max-w-2xl mx-auto">
+                  <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1.5">定义输出画幅与风格</h2>
+                  <p className="text-slate-400 text-xs font-medium tracking-tight max-w-xl mx-auto">
                     每一张生成的图片都经过视觉层级的深度优化，您可以针对不同的销售场景选择最佳画效。
                   </p>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-24">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 shrink-0">
                   {ALL_TYPES.map(type => (
                     <button 
                       key={type.id} 
                       onClick={() => setSelectedType(type.id)}
-                      className={`relative p-10 rounded-[48px] border-2 text-left transition-all group duration-500 ${
+                      className={`relative p-6 rounded-[32px] border-2 text-left transition-all group duration-500 ${
                         selectedType === type.id 
                         ? 'border-primary bg-primary/[0.02] shadow-2xl shadow-primary/5 scale-[1.02]' 
                         : 'border-slate-50 bg-white hover:border-slate-100 hover:shadow-xl hover:shadow-slate-100/50'
                       }`}
                     >
-                      <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center mb-8 transition-all duration-500 shadow-lg ${
+                      <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center mb-4 transition-all duration-500 shadow-lg ${
                         selectedType === type.id ? 'bg-primary text-primary-foreground shadow-primary/20 rotate-6' : 'bg-slate-50 text-slate-400 shadow-none'
                       }`}>
-                         {type.id === 'main' && <ImageIcon className="w-8 h-8" />}
-                         {type.id === 'detail' && <Maximize2 className="w-8 h-8" />}
-                         {type.id === 'sellingPoint' && <Sparkles className="w-8 h-8" />}
-                         {type.id === 'scene' && <ImageIcon className="w-8 h-8" />}
+                         {type.id === 'main' && <ImageIcon className="w-6 h-6" />}
+                         {type.id === 'detail' && <Maximize2 className="w-6 h-6" />}
+                         {type.id === 'sellingPoint' && <Sparkles className="w-6 h-6" />}
+                         {type.id === 'scene' && <ImageIcon className="w-6 h-6" />}
                       </div>
-                      <h3 className={`text-xl font-black mb-3 tracking-tight transition-colors ${selectedType === type.id ? 'text-primary' : 'text-slate-800'}`}>
+                      <h3 className={`text-base font-black mb-1 tracking-tight transition-colors ${selectedType === type.id ? 'text-primary' : 'text-slate-800'}`}>
                         {type.label}
                       </h3>
-                      <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-6">
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-4">
                         {type.id === 'main' && '标准 1:1 特写。针对主图展示优化，背景通透、产品饱满。'}
                         {type.id === 'detail' && '高清微距感。细腻捕捉针脚、面料纹理与辅料细节。'}
                         {type.id === 'sellingPoint' && '广告级排版。结合核心卖点，打造极具沉浸感的营销视觉。'}
                         {type.id === 'scene' && '自然光影律动。模拟真实户内/户外环境，赋予商品温度。'}
                       </p>
                       
-                      <div className="flex items-center gap-2">
-                         <div className={`w-8 h-[2px] rounded-full transition-colors ${selectedType === type.id ? 'bg-primary' : 'bg-slate-100'}`} />
-                         <span className={`text-[10px] font-black uppercase tracking-widest ${selectedType === type.id ? 'text-primary' : 'text-slate-300'}`}>
+                      <div className="flex items-center gap-1.5">
+                         <div className={`w-6 h-[2px] rounded-full transition-colors ${selectedType === type.id ? 'bg-primary' : 'bg-slate-100'}`} />
+                         <span className={`text-[9px] font-black uppercase tracking-widest ${selectedType === type.id ? 'text-primary' : 'text-slate-300'}`}>
                            {selectedType === type.id ? 'Selected' : 'Select Style'}
                          </span>
                       </div>
 
                       {selectedType === type.id && (
-                        <div className="absolute top-8 right-8">
-                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <CheckCircle className="w-5 h-5 text-primary" />
+                        <div className="absolute top-6 right-6">
+                          <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-primary" />
                           </div>
                         </div>
                       )}
@@ -1152,87 +1310,84 @@ export default function Page() {
                   ))}
                 </div>
 
-                <div className="flex justify-center">
-                  <Button size="lg" onClick={startAnalysis} className="rounded-full px-20 h-16 font-black text-xl shadow-[0_20px_50px_rgba(var(--primary-rgb),0.2)] hover:scale-105 transition-all">
-                    同步数据并分析 <Sparkles className="w-6 h-6 ml-3" />
+                <div className="flex justify-center shrink-0">
+                  <Button size="lg" onClick={startAnalysis} className="rounded-full px-12 h-14 font-black text-base shadow-[0_15px_40px_rgba(var(--primary-rgb),0.15)] hover:scale-105 transition-all">
+                    同步数据并分析 <Sparkles className="w-5 h-5 ml-2" />
                   </Button>
                 </div>
               </div>
             )}
 
             {step === 'analyzing' && (
-              <div className="flex flex-col items-center justify-center py-32">
-                <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">正在分析商品...</h2>
-                <p className="text-muted-foreground">AI 正在提取详情、风格和卖点</p>
+              <div className="flex-1 min-h-0 flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+                <h2 className="text-xl font-bold mb-2">正在分析商品...</h2>
+                <p className="text-slate-400 text-sm">AI 正在提取详情、风格和卖点</p>
               </div>
             )}
 
             {step === 'result' && analysis && (
-              <div className="max-w-[1600px] mx-auto pb-24 px-6 sm:px-8 lg:px-12 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="flex-1 min-h-0 flex flex-col w-full space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 {/* Header Section: Title & Main Actions */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10 pb-12 border-b border-slate-100 dark:border-slate-800">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-px bg-primary/30" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Intelligence Engine v3</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-px bg-primary/30" />
+                      <span className="text-[9px] font-black uppercase tracking-[0.4em] text-primary">Intelligence Engine v3</span>
                     </div>
-                    <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">定制精炼参数</h2>
-                    <p className="text-base sm:text-lg text-slate-400 font-medium max-w-2xl leading-relaxed">
-                      产品样式 100% 还原。基于垂直风格模型深度优化，您可以微调参数来掌控场景氛围与模特表现。
-                    </p>
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">定制精炼参数</h2>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4">
-                     <Button variant="outline" className="rounded-2xl px-10 h-16 font-black border-slate-100 dark:border-slate-800 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all" onClick={() => setStep('select')}>
+                  <div className="flex items-center gap-2">
+                     <Button variant="outline" className="rounded-xl px-6 h-12 font-black text-xs border-slate-100 dark:border-slate-800 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all" onClick={() => setStep('select')}>
                        返回风格选择
                      </Button>
-                     <Button onClick={handleGenerate} className="rounded-2xl px-14 h-16 font-black shadow-[0_25px_60px_rgba(var(--primary-rgb),0.25)] hover:bg-primary/90 hover:scale-105 transition-all text-xl group">
-                       启动精炼生成 <Zap className="w-6 h-6 ml-3 fill-current group-hover:animate-pulse" />
+                     <Button onClick={handleGenerate} className="rounded-xl px-8 h-12 font-black shadow-[0_25px_60px_rgba(var(--primary-rgb),0.25)] hover:bg-primary/90 hover:scale-105 transition-all text-sm group">
+                       启动精炼生成 <Zap className="w-5 h-5 ml-2 fill-current group-hover:animate-pulse" />
                      </Button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch overflow-hidden">
                   {/* Left Sidebar: Assets */}
-                  <aside className="lg:col-span-3 space-y-10 lg:sticky lg:top-[120px]">
+                  <aside className="lg:col-span-3 space-y-4 overflow-y-auto pr-1">
                     <div className="relative">
-                      <div className="absolute -inset-6 bg-primary/5 blur-[60px] opacity-50" />
-                      <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[48px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
-                        <div className="px-8 py-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Master Ref</span>
-                          <div className="flex gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-primary/20" />
-                            <div className="w-2 h-2 rounded-full bg-primary" />
+                      <div className="absolute -inset-4 bg-primary/5 blur-[40px] opacity-50" />
+                      <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
+                        <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                          <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">Master Ref</span>
+                          <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary/20" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                           </div>
                         </div>
-                        <div className="p-8">
-                          <div className="relative group/ref overflow-hidden rounded-[32px]">
-                             <img src={imageBase64} className="w-full aspect-[3/4] object-cover shadow-2xl border border-slate-50 group-hover:scale-110 transition-transform duration-700" alt="Original" />
+                        <div className="p-4">
+                          <div className="relative group/ref overflow-hidden rounded-[20px]">
+                             <img src={imageBase64} className="w-full aspect-[3/4] object-cover shadow-2xl border border-slate-50 group-hover:scale-105 transition-transform duration-700" alt="Original" />
                              <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover/ref:opacity-100 transition-opacity" />
                           </div>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="space-y-8">
-                      <div className="grid gap-8">
+                    <div className="space-y-4">
+                      <div className="grid gap-4">
                         {selectedType !== 'main' && selectedType !== 'detail' && (
-                          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] p-8 shadow-sm hover:shadow-2xl hover:shadow-slate-200/30 transition-all group">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6 block">模特参考 (Portrait)</Label>
+                          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/30 transition-all group">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4 block">模特参考 (Portrait)</Label>
                             {modelBase64 ? (
-                              <div className="relative rounded-[24px] overflow-hidden group/img shadow-2xl">
+                              <div className="relative rounded-[16px] overflow-hidden group/img shadow-2xl">
                                 <img src={modelBase64} className="w-full aspect-[4/5] object-cover" alt="Model" />
                                 <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[6px]">
-                                  <Button size="sm" variant="secondary" className="rounded-full font-black text-[10px] uppercase tracking-widest" onClick={() => setModelBase64('')}>更换参考</Button>
+                                  <Button size="sm" variant="secondary" className="rounded-full font-black text-[9px] uppercase tracking-widest" onClick={() => setModelBase64('')}>更换参考</Button>
                                 </div>
                               </div>
                             ) : (
                               <div 
-                                className="aspect-[4/5] border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[28px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer" 
+                                className="aspect-[4/5] border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[20px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer" 
                                 onClick={() => modelInputRef.current?.click()}
                               >
-                                <Sparkles className="w-8 h-8 text-primary/40 mb-4" />
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center px-6">上传人像参考</span>
+                                <Sparkles className="w-6 h-6 text-primary/40 mb-2" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-center px-4">上传人像参考</span>
                                 <input type="file" ref={modelInputRef} className="hidden" accept="image/*" onChange={handleModelUpload} />
                               </div>
                             )}
@@ -1240,58 +1395,55 @@ export default function Page() {
                         )}
 
                         {selectedType === 'scene' && (
-                          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] p-8 shadow-sm hover:shadow-2xl hover:shadow-slate-200/30 transition-all space-y-6">
+                          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/30 transition-all space-y-4">
                             <div className="flex items-center justify-between">
-                              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">背景参考 (Scene Reference)</Label>
+                              <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">背景参考</Label>
                               {selectedPresetId && (
-                                <span className="bg-amber-500/10 text-amber-500 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                <span className="bg-amber-500/10 text-amber-500 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                                   预设底片
                                 </span>
                               )}
                               {!selectedPresetId && sceneBase64 && (
-                                <span className="bg-primary/10 text-primary text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                <span className="bg-primary/10 text-primary text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                                   自定义上传
                                 </span>
                               )}
                             </div>
                             
                             {isPresetLoading ? (
-                              <div className="aspect-[4/5] flex flex-col items-center justify-center rounded-[28px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
-                                <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center px-4">正在载入预设底片...</span>
+                              <div className="aspect-[4/5] flex flex-col items-center justify-center rounded-[20px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
+                                <Loader2 className="w-6 h-6 text-primary animate-spin mb-2" />
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center px-2">载入中...</span>
                               </div>
                             ) : sceneBase64 ? (
-                              <div className="space-y-4">
-                                <div className="relative rounded-[24px] overflow-hidden group/img shadow-2xl aspect-[4/5]">
+                              <div className="space-y-3">
+                                <div className="relative rounded-[16px] overflow-hidden group/img shadow-2xl aspect-[4/5]">
                                   <img src={sceneBase64} className="w-full h-full object-cover" alt="Scene" />
                                   <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[6px]">
-                                    <Button size="sm" variant="secondary" className="rounded-full font-black text-[10px] uppercase tracking-widest" onClick={handleClearScene}>清除底片</Button>
+                                    <Button size="sm" variant="secondary" className="rounded-full font-black text-[9px] uppercase tracking-widest" onClick={handleClearScene}>清除底片</Button>
                                   </div>
                                 </div>
                                 {selectedPresetId && (
-                                  <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl">
-                                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-300">
+                                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                                    <p className="text-[10px] font-black text-slate-700 dark:text-slate-300">
                                       {PRESET_SCENES.find(p => p.id === selectedPresetId)?.name}
-                                    </p>
-                                    <p className="text-[10px] font-medium text-slate-400 mt-1">
-                                      {PRESET_SCENES.find(p => p.id === selectedPresetId)?.styleText}
                                     </p>
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="space-y-6">
+                              <div className="space-y-4">
                                 {/* Preset Scenes Grid */}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-2">
                                   {PRESET_SCENES.map((preset) => (
                                     <button
                                       key={preset.id}
                                       onClick={() => handlePresetSceneSelect(preset.id)}
-                                      className="relative rounded-2xl overflow-hidden aspect-[4/5] group border border-slate-100 dark:border-slate-800/50 hover:border-primary/40 shadow-sm hover:shadow-md transition-all text-left"
+                                      className="relative rounded-xl overflow-hidden aspect-[4/5] group border border-slate-100 dark:border-slate-800/50 hover:border-primary/40 shadow-sm hover:shadow-md transition-all text-left"
                                     >
                                       <img src={preset.previewUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={preset.name} />
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
-                                        <p className="text-[10px] font-black text-white tracking-wide">{preset.name}</p>
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2">
+                                        <p className="text-[9px] font-black text-white tracking-wide">{preset.name}</p>
                                       </div>
                                     </button>
                                   ))}
@@ -1302,17 +1454,17 @@ export default function Page() {
                                     <span className="w-full border-t border-slate-100 dark:border-slate-800" />
                                   </div>
                                   <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white dark:bg-slate-900 px-3 text-[9px] font-black tracking-widest text-slate-400">或 / Or</span>
+                                    <span className="bg-white dark:bg-slate-900 px-2 text-[8px] font-black tracking-widest text-slate-400">或</span>
                                   </div>
                                 </div>
 
                                 {/* Custom Upload Button */}
                                 <div 
-                                  className="py-8 border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[28px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer" 
+                                  className="py-4 border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[20px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer group" 
                                   onClick={() => sceneInputRef.current?.click()}
                                 >
-                                  <Upload className="w-6 h-6 text-primary/40 mb-3" />
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center px-4">自定义上传背景</span>
+                                  <Upload className="w-5 h-5 text-primary/40 mb-1 group-hover:scale-110 transition-transform" />
+                                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center px-2">上传背景</span>
                                   <input type="file" ref={sceneInputRef} className="hidden" accept="image/*" onChange={handleSceneUpload} />
                                 </div>
                               </div>
@@ -1323,22 +1475,22 @@ export default function Page() {
                     </div>
                   </aside>
 
-                  {/* Right Main Dashboard: 3 Columns of Parameters */}
-                  <div className="lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[64px] shadow-2xl shadow-slate-200/30 dark:shadow-none p-12 lg:p-16 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/[0.03] blur-[140px] -mr-80 -mt-80 rounded-full" />
-                    <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-primary/[0.03] blur-[140px] -ml-80 -mb-80 rounded-full" />
+                  {/* Right Main Dashboard: 3 Columns of Parameters with independent overflow scrolling! */}
+                  <div className="lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] shadow-2xl shadow-slate-200/30 dark:shadow-none p-8 lg:p-10 relative overflow-y-auto max-h-full">
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/[0.02] blur-[100px] -mr-40 -mt-40 rounded-full" />
+                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/[0.02] blur-[100px] -ml-40 -mb-40 rounded-full" />
                     
-                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-12 xl:gap-20">
+                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 xl:gap-12">
                       {/* Column 1: Data Analysis */}
-                      <div className="space-y-12">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                            <span className="text-xs font-black">01</span>
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <span className="text-[10px] font-black">01</span>
                           </div>
-                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">数据分析</h3>
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">数据分析</h3>
                         </div>
                         
-                        <div className="space-y-8">
+                        <div className="space-y-5">
                           <EditableTextField label="商品对象" value={analysis.productName} onChange={(v) => setAnalysis({...analysis, productName: v})} />
                           <EditableTextField label="商品品类" value={analysis.category} onChange={(v) => setAnalysis({...analysis, category: v})} />
                           <EditableTextField label="面料纹理" value={analysis.materials} onChange={(v) => setAnalysis({...analysis, materials: v})} />
@@ -1347,69 +1499,69 @@ export default function Page() {
                       </div>
 
                       {/* Column 2: Refine Parameters */}
-                      <div className="space-y-12">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                            <span className="text-xs font-black">02</span>
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <span className="text-[10px] font-black">02</span>
                           </div>
-                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">精修参数</h3>
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">精修参数</h3>
                         </div>
 
-                        <div className="space-y-8">
+                        <div className="space-y-5">
                           <EditableTextField label="风格方向" value={config.garmentStyle} onChange={(v) => setConfig({...config, garmentStyle: v})} />
                           <EditableTextField label="材质细节" value={config.garmentMaterial} onChange={(v) => setConfig({...config, garmentMaterial: v})} />
                           <EditableTextField label="光影氛围" value={config.sceneStyle} onChange={(v) => setConfig({...config, sceneStyle: v})} />
                           <EditableTextField label="构图控制" value={config.garmentCategory} onChange={(v) => setConfig({...config, garmentCategory: v})} />
                         </div>
                         
-                        <div className="p-8 bg-amber-500/5 rounded-[32px] border border-amber-500/10 shadow-inner">
-                          <div className="flex items-center gap-3 mb-3">
-                            <CheckCircle className="w-4 h-4 text-amber-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">原图硬核还原</span>
+                        <div className="p-5 bg-amber-500/5 rounded-2xl border border-amber-500/10 shadow-inner">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <CheckCircle className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">原图硬核还原</span>
                           </div>
-                          <p className="text-[11px] font-medium text-slate-500 leading-relaxed italic">
-                            系统将强制锁定原图中的产品结构与材质。参数调整仅影响环境光影、模特表现及场景融合度。
+                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
+                            系统将强制锁定原图中的产品结构与材质。
                           </p>
                         </div>
                       </div>
 
                       {/* Column 3: Output Specs */}
-                      <div className="space-y-12 md:col-span-2 xl:col-span-1">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                            <span className="text-xs font-black">03</span>
+                      <div className="space-y-6 md:col-span-2 xl:col-span-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <span className="text-[10px] font-black">03</span>
                           </div>
-                          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">输出规格</h3>
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">输出规格</h3>
                         </div>
 
-                        <div className="space-y-10">
-                          <div className="space-y-4">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">分辨率 (Resolution)</Label>
-                            <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">分辨率 (Resolution)</Label>
+                            <div className="grid grid-cols-3 gap-2">
                               {(['1k', '2k', '4k'] as const).map((res) => (
                                 <button
                                   key={res}
                                   onClick={() => setConfig({ ...config, resolution: res })}
-                                  className={`h-14 rounded-2xl text-[11px] font-black uppercase tracking-widest border transition-all ${
+                                  className={`h-11 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                                     config.resolution === res 
                                     ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105' 
                                     : 'bg-slate-50/50 border-slate-100 text-slate-400 hover:border-primary/30'
                                   }`}
                                 >
-                                  {res === '1k' ? '标准 1K' : res === '2k' ? '高清 2K' : '超清 4K'}
+                                  {res === '1k' ? '1K' : res === '2k' ? '2K' : '4K'}
                                 </button>
                               ))}
                             </div>
                           </div>
 
-                          <div className="space-y-4">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">画幅比例 (Aspect Ratio)</Label>
-                            <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">画幅比例 (Aspect Ratio)</Label>
+                            <div className="grid grid-cols-3 gap-2">
                               {(['1:1', '3:4', '9:16'] as const).map((ratio) => (
                                 <button
                                   key={ratio}
                                   onClick={() => setConfig({ ...config, aspectRatio: ratio as any })}
-                                  className={`h-14 rounded-2xl text-[11px] font-black uppercase tracking-widest border transition-all ${
+                                  className={`h-11 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                                     config.aspectRatio === ratio 
                                     ? 'bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105' 
                                     : 'bg-slate-50/50 border-slate-100 text-slate-400 hover:border-primary/30'
@@ -1421,13 +1573,13 @@ export default function Page() {
                             </div>
                           </div>
 
-                          <div className="p-8 bg-primary/5 rounded-[32px] border border-primary/10 shadow-inner">
-                            <div className="flex items-center gap-3 mb-3">
-                              <Zap className="w-4 h-4 text-primary" />
-                              <span className="text-[10px] font-black uppercase tracking-widest text-primary">Neural Optimization</span>
+                          <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 shadow-inner">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <Zap className="w-3.5 h-3.5 text-primary" />
+                              <span className="text-[9px] font-black uppercase tracking-widest text-primary">Neural Optimization</span>
                             </div>
-                            <p className="text-[11px] font-medium text-slate-500 leading-relaxed italic">
-                              AI 将基于您的规格自动调整光影采样率。4K 分辨率将开启深度细节增强。
+                            <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
+                              AI 将基于您的规格自动调整光影采样率。
                             </p>
                           </div>
                         </div>
@@ -1435,7 +1587,7 @@ export default function Page() {
                     </div>
 
                     {/* Additional Options Footer */}
-                    <div className="mt-20 pt-12 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-12">
+                    <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6">
                        <EditableTagList label="Color Schema (色彩方案)" tags={analysis.colors} onChange={(v) => setAnalysis({...analysis, colors: v})} />
                        <EditableTagList label="Value Props (卖点关键词)" tags={analysis.sellingPoints} onChange={(v) => setAnalysis({...analysis, sellingPoints: v})} />
                        <EditableTagList label="Semantic Keywords (语义词包)" tags={analysis.keywords} onChange={(v) => setAnalysis({...analysis, keywords: v})} />
@@ -1447,18 +1599,18 @@ export default function Page() {
 
 
         {(step === 'generating' || step === 'done') && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-semibold">
+          <div className="flex-1 min-h-0 overflow-y-auto w-full max-w-4xl mx-auto py-4 space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold">
                 {isGenerating ? '正在生成素材...' : '生成完成'}
               </h2>
-              <div className="flex items-center gap-4">
-                {isGenerating && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
+              <div className="flex items-center gap-3">
+                {isGenerating && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
                 {step === 'done' && (
                   <>
-                    <Button variant="outline" onClick={() => setStep('select')}>生成其他类型图片</Button>
-                    <Button variant="secondary" onClick={() => setStep('result')}>修改当前配置</Button>
-                    <Button onClick={handleGenerate}>重新生成</Button>
+                    <Button variant="outline" size="sm" onClick={() => setStep('select')}>生成其他类型图片</Button>
+                    <Button variant="secondary" size="sm" onClick={() => setStep('result')}>修改当前配置</Button>
+                    <Button size="sm" onClick={handleGenerate}>重新生成</Button>
                   </>
                 )}
               </div>
@@ -1480,23 +1632,23 @@ export default function Page() {
         )}
 
         {normalSubMode === 'custom' && (
-          <div className="max-w-4xl mx-auto space-y-12 py-10 animate-in fade-in slide-in-from-bottom-8">
+          <div className="flex-1 min-h-0 overflow-y-auto w-full max-w-4xl mx-auto space-y-6 py-6 animate-in fade-in slide-in-from-bottom-8">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-primary/10 rounded-[28px] flex items-center justify-center mb-6">
-                <Zap className="w-8 h-8 text-primary" />
+              <div className="w-12 h-12 bg-primary/10 rounded-[20px] flex items-center justify-center mb-4">
+                <Zap className="w-6 h-6 text-primary" />
               </div>
-              <h2 className="text-4xl font-black tracking-tight mb-3">产品 + 创意：探索无限可能</h2>
-              <p className="text-slate-400 font-medium tracking-tight px-4 max-w-2xl">
+              <h2 className="text-2xl font-black tracking-tight mb-2">产品 + 创意：探索无限可能</h2>
+              <p className="text-slate-400 font-medium text-xs tracking-tight px-4 max-w-xl">
                 上传您的单品原图，输入创意构思。AI 将保证产品样式 100% 还原，并根据您的描述灵活调整模特姿势与环境。
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-              <div className="lg:col-span-2 space-y-8">
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] p-8 shadow-sm">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 block">产品原图 (100% 还原基础)</Label>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 block">产品原图 (100% 还原基础)</Label>
                   {customReferenceBase64 ? (
-                     <div className="relative group rounded-2xl overflow-hidden aspect-square shadow-2xl">
+                     <div className="relative group rounded-xl overflow-hidden aspect-square shadow-xl">
                         <img src={customReferenceBase64} className="w-full h-full object-cover" alt="Custom Reference" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <Button size="sm" variant="secondary" onClick={() => setCustomReferenceBase64('')}>更换原图</Button>
@@ -1504,35 +1656,35 @@ export default function Page() {
                      </div>
                   ) : (
                     <div 
-                      className="aspect-square border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[32px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer group" 
+                      className="aspect-square border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-2xl bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer group" 
                       onClick={() => customInputRef.current?.click()}
                     >
-                      <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                        <Upload className="w-6 h-6 text-primary" />
+                      <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+                        <Upload className="w-5 h-5 text-primary" />
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center px-6">点击上传产品原图<br/><small className="opacity-50">AI 将保证商品 100% 不变</small></span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center px-4">点击上传产品原图<br/><small className="opacity-50">AI 将保证商品 100% 不变</small></span>
                       <input type="file" ref={customInputRef} className="hidden" accept="image/*" onChange={handleCustomUpload} />
                     </div>
                   )}
                 </div>
 
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6">
-                  <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5" /> 自由生图贴士
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
+                  <h4 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" /> 自由生图贴士
                   </h4>
-                  <p className="text-[11px] text-emerald-600/70 font-medium leading-relaxed italic">
+                  <p className="text-[10px] text-emerald-600/70 font-medium leading-relaxed italic">
                     &quot;描述中包含：光效细节、材质质感、模特姿势、背景环境等。您可以自由构思，AI 将保证产品完美融入并 100% 还原。&quot;
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] p-6 shadow-sm">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 block">输出清晰度</Label>
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block">输出清晰度</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['1k', '2k', '4k'] as const).map((res) => (
                       <button
                         key={res}
                         onClick={() => setCustomResolution(res)}
-                        className={`py-2 rounded-xl text-[10px] font-bold uppercase transition-all border ${
+                        className={`py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all border ${
                           customResolution === res
                             ? 'bg-primary border-primary text-primary-foreground'
                             : 'bg-slate-50 border-slate-100 text-slate-400'
@@ -1545,23 +1697,23 @@ export default function Page() {
                 </div>
               </div>
 
-              <div className="lg:col-span-3 space-y-6">
-                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] p-8 shadow-sm">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 block">创意描述 (Prompt)</Label>
+              <div className="lg:col-span-3 space-y-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 block">创意描述 (Prompt)</Label>
                   <textarea 
-                    className="w-full min-h-[300px] p-6 text-lg font-medium border-none bg-slate-50/50 dark:bg-slate-950 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-300" 
+                    className="w-full min-h-[160px] p-4 text-sm font-medium border-none bg-slate-50/50 dark:bg-slate-950 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-300" 
                     placeholder="例如：\n极简纯白背景，一件oversize风格的黑色卫衣挂在木质衣架上，柔和侧光，高清写实材质..."
                     value={customPrompt}
                     onChange={(e) => setCustomPrompt(e.target.value)}
                   />
-                  <div className="pt-8 flex justify-end">
+                  <div className="pt-4 flex justify-end">
                     <Button 
-                      size="lg" 
+                      size="sm" 
                       onClick={handleCustomGenerate} 
                       disabled={!customPrompt || isGenerating} 
-                      className="rounded-full px-12 h-14 font-bold text-lg shadow-xl shadow-primary/20"
+                      className="rounded-full px-8 h-10 font-bold shadow-lg shadow-primary/15"
                     >
-                      {isGenerating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2" />}
+                      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
                       {isGenerating ? '正在构思中...' : '开始生成'}
                     </Button>
                   </div>
@@ -1570,27 +1722,27 @@ export default function Page() {
             </div>
 
             {customResult && (
-              <div className="pt-16 text-center animate-in fade-in slide-in-from-bottom-12">
-                <div className="flex items-center justify-center gap-3 mb-10">
-                  <div className="h-px w-12 bg-slate-100" />
-                  <h3 className="text-2xl font-black tracking-tight uppercase">生成结果</h3>
-                  <div className="h-px w-12 bg-slate-100" />
+              <div className="pt-6 text-center animate-in fade-in slide-in-from-bottom-8">
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <div className="h-px w-8 bg-slate-100" />
+                  <h3 className="text-lg font-black tracking-tight uppercase">生成结果</h3>
+                  <div className="h-px w-8 bg-slate-100" />
                 </div>
                 
-                <div className="inline-block relative rounded-[40px] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800">
-                  <img src={customResult} className="max-w-full max-h-[75vh] object-contain" alt="Custom Generated" />
-                  <div className="absolute inset-x-0 bottom-0 p-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex justify-between items-end opacity-0 hover:opacity-100 transition-opacity duration-500">
+                <div className="inline-block relative rounded-2xl overflow-hidden shadow-xl border-2 border-white dark:border-slate-800">
+                  <img src={customResult} className="max-w-full max-h-[50vh] object-contain" alt="Custom Generated" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex justify-between items-end opacity-0 hover:opacity-100 transition-opacity duration-500">
                     <div className="text-left">
-                       <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">自由生图模式</p>
-                       <p className="text-white text-sm font-bold truncate max-w-xs">{customPrompt}</p>
+                       <p className="text-[8px] font-bold text-white/50 uppercase tracking-widest mb-0.5">自由生图模式</p>
+                       <p className="text-white text-xs font-bold truncate max-w-xs">{customPrompt}</p>
                     </div>
-                    <Button variant="secondary" size="lg" className="rounded-full font-bold px-8" onClick={() => {
+                    <Button variant="secondary" size="sm" className="rounded-full font-bold px-4" onClick={() => {
                       const link = document.createElement('a');
                       link.download = `fashion-ai-custom.png`;
                       link.href = customResult;
                       link.click();
                     }}>
-                      <Download className="w-4 h-4 mr-2" />
+                      <Download className="w-3.5 h-3.5 mr-1" />
                       下载高清图
                     </Button>
                   </div>
@@ -1603,10 +1755,10 @@ export default function Page() {
         )}
 
         {activeMode === 'chat' && (
-          <div className="max-w-4xl mx-auto py-6 px-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none min-h-[700px]">
+          <div className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 flex flex-col justify-stretch py-2 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
               {/* Chat Header */}
-              <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+              <div className="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                     <MessageSquare className="w-4 h-4 animate-pulse" />
@@ -1618,7 +1770,7 @@ export default function Page() {
                 </div>
                 {/* Sync Indicator */}
                 <div className="flex items-center gap-2">
-                   {imageBase64 ? (
+                   {chatImageBase64 ? (
                      <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-full border border-green-500/20">
                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                        <span className="text-[9px] font-black uppercase text-green-600 tracking-wider">参考底图已载入</span>
@@ -1635,9 +1787,9 @@ export default function Page() {
               </div>
 
               {/* Messages Box */}
-              <div className="flex-1 p-8 overflow-y-auto space-y-6 max-h-[550px]">
+              <div className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 min-h-0">
                 {chatMessages.map((msg) => {
-                  if (msg.role === 'assistant' && !msg.content && !msg.generatedImageUrl) {
+                  if (msg.role === 'assistant' && !msg.content && !msg.generatedImageUrl && !msg.isGeneratingImages) {
                     return null;
                   }
                   return (
@@ -1699,13 +1851,19 @@ export default function Page() {
                         </div>
                       )}
 
-                      <div className={`p-5 rounded-[24px] text-sm leading-relaxed whitespace-pre-wrap font-medium shadow-sm ${
-                        msg.role === 'user' 
-                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800'
-                      }`}>
-                        {msg.content}
-                      </div>
+                      {msg.content && (
+                        <div className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-[24px] text-sm leading-relaxed whitespace-pre-wrap font-medium shadow-sm ${
+                          msg.role === 'user' 
+                          ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800'
+                        }`}>
+                          {msg.content}
+                        </div>
+                      )}
+
+                      {msg.isGeneratingImages && (
+                        <ChatGenerationCard details={msg.generationDetails} />
+                      )}
 
                       {/* AI Generated image(s) in chat bubble with direct preview and download */}
                       {msg.generatedImageUrls && msg.generatedImageUrls.length > 0 ? (
@@ -1730,7 +1888,7 @@ export default function Page() {
                               <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                 <div className="flex flex-col">
                                   <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
-                                    {config.aspectRatio || '3:4'} • {customResolution || '2k'} 画质 ({idx + 1}/{msg.generatedImageUrls.length})
+                                    {chatConfig.aspectRatio || '3:4'} • {chatResolution || '2k'} 画质 ({idx + 1}/{msg.generatedImageUrls.length})
                                   </span>
                                   <span className="text-[9px] text-slate-400 font-medium">商业级广告渲染</span>
                                 </div>
@@ -1768,7 +1926,7 @@ export default function Page() {
                             <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                               <div className="flex flex-col">
                                 <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
-                                  {config.aspectRatio || '3:4'} • {customResolution || '2k'} 画质
+                                  {chatConfig.aspectRatio || '3:4'} • {chatResolution || '2k'} 画质
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-medium">商业级广告渲染</span>
                               </div>
@@ -1784,6 +1942,206 @@ export default function Page() {
                             </div>
                           </div>
                         )
+                      )}
+
+                      {/* 1. Welcome suggestions for empty state */}
+                      {msg.id === 'welcome' && chatMessages.length === 1 && (
+                        <div className="mt-4 p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-xl w-full animate-in fade-in-50 duration-500 shadow-sm space-y-3.5">
+                          <div className="flex items-center gap-2">
+                            <Wand2 className="w-4 h-4 text-primary animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">新手创作灵感星火：</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {[
+                              { text: '帮我做一张卖点图，突出面料舒适', desc: '展现温润柔和自然光影，慵懒呼吸感' },
+                              { text: '我想生成欧美女模，背景设定在咖啡馆', desc: '街头咖啡馆，温和午后光，优雅时尚' },
+                              { text: '自由构思：挂在山顶枯木上，荒野孤寂冷色调', desc: '大衣悬挂枯木，深灰枯草，极具艺术感' },
+                              { text: '分析并提取这件衣服的设计特点', desc: '顶级买手深度分析并自动同步生图配置' }
+                            ].map((item, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  if (!chatImageBase64) {
+                                    setChatInput(item.text);
+                                    setStatusMsg({ type: 'success', content: '💡 请先点击对话框左下角回形针上传衣服原图，再进行生成！' });
+                                    chatAttachmentRef.current?.click();
+                                  } else {
+                                    handleChatSend(undefined, item.text);
+                                  }
+                                }}
+                                className="p-3 bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-left transition-all hover:scale-[1.01] hover:border-primary/20 shadow-sm"
+                              >
+                                <p className="text-xs font-black text-slate-700 dark:text-slate-200 line-clamp-1 mb-0.5">{item.text}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">{item.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. Interactive next-steps and parameters adjustment */}
+                      {msg.id !== 'welcome' && msg.role === 'assistant' && !isChatLoading && msg.id === chatMessages.filter(m => m.role === 'assistant').pop()?.id && (
+                        <div className="mt-3.5 space-y-3 p-4 bg-slate-50/80 dark:bg-slate-800/60 border border-slate-100/80 dark:border-slate-800 rounded-2xl max-w-xl w-full animate-in fade-in-50 duration-500 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Sliders className="w-3.5 h-3.5 text-primary" />
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">智能参数调节与下一步操作</span>
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600">点击自动配置并直接生图</span>
+                          </div>
+
+                          {/* Fast interactive options */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!chatImageBase64) {
+                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                  chatAttachmentRef.current?.click();
+                                } else {
+                                  handleChatSend(undefined, "直接生成商品主图");
+                                }
+                              }}
+                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                            >
+                              <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 生成商品主图 (Main)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">流式设计高档主图海报</span>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!chatImageBase64) {
+                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                  chatAttachmentRef.current?.click();
+                                } else {
+                                  handleChatSend(undefined, "切换到模特上身并生成");
+                                }
+                              }}
+                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                            >
+                              <Wand2 className="w-4 h-4 text-primary shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 模特效果生图 (Model)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">服装真人高档模特渲染</span>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!chatImageBase64) {
+                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                  chatAttachmentRef.current?.click();
+                                } else {
+                                  handleChatSend(undefined, "生成一张服装卖点特写图");
+                                }
+                              }}
+                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                            >
+                              <Sliders className="w-4 h-4 text-primary shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 卖点细节特写 (Detail)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">聚焦面料材质与裁剪特写</span>
+                              </div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!chatImageBase64) {
+                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                  chatAttachmentRef.current?.click();
+                                } else {
+                                  handleChatSend(undefined, "把服装融入特定的奢华背景中并生成");
+                                }
+                              }}
+                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                            >
+                              <ImageIcon className="w-4 h-4 text-primary shrink-0" />
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 创意背景重构 (Scene)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">自然植入多维商业环境</span>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Parameters selectors inside message */}
+                          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                                <span>画幅比例 (Ratio)</span>
+                                <span className="text-[9px] text-primary bg-primary/10 px-1.5 rounded">当前: {chatConfig.aspectRatio || '3:4'}</span>
+                              </div>
+                              <div className="flex bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                {([
+                                  { ratio: '1:1', label: '1:1 正方形' },
+                                  { ratio: '3:4', label: '3:4 人像' },
+                                  { ratio: '9:16', label: '9:16 竖屏' }
+                                ] as const).map((opt) => (
+                                  <button
+                                    key={opt.ratio}
+                                    type="button"
+                                    onClick={() => {
+                                      setChatConfig(prev => ({ ...prev, aspectRatio: opt.ratio }));
+                                      if (!chatImageBase64) {
+                                        setStatusMsg({ type: 'success', content: `尺寸已修改为 ${opt.ratio}。请上传图片并开始生成！` });
+                                      } else {
+                                        handleChatSend(undefined, `把输出尺寸切换为 ${opt.ratio}，并直接生成一张生图`);
+                                      }
+                                    }}
+                                    className={`flex-1 py-1 text-[9px] font-black rounded-md transition-all ${
+                                      chatConfig.aspectRatio === opt.ratio
+                                        ? 'bg-primary text-primary-foreground shadow-sm scale-105'
+                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                    }`}
+                                  >
+                                    {opt.label.split(' ')[0]}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                                <span>清晰度分级 (Quality)</span>
+                                <span className="text-[9px] text-primary bg-primary/10 px-1.5 rounded">当前: {chatResolution.toUpperCase()}</span>
+                              </div>
+                              <div className="flex bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                {([
+                                  { res: '1k', label: '1K 标清' },
+                                  { res: '2k', label: '2K 高清' },
+                                  { res: '4k', label: '4K 超清' }
+                                ] as const).map((opt) => (
+                                  <button
+                                    key={opt.res}
+                                    type="button"
+                                    onClick={() => {
+                                      setChatResolution(opt.res);
+                                      if (!chatImageBase64) {
+                                        setStatusMsg({ type: 'success', content: `清晰度已修改为 ${opt.res.toUpperCase()}。请上传图片并开始生成！` });
+                                      } else {
+                                        handleChatSend(undefined, `使用 ${opt.res.toUpperCase()} 清晰度，并直接生成一张生图`);
+                                      }
+                                    }}
+                                    className={`flex-1 py-1 text-[9px] font-black rounded-md transition-all ${
+                                      chatResolution === opt.res
+                                        ? 'bg-primary text-primary-foreground shadow-sm scale-105'
+                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                    }`}
+                                  >
+                                    {opt.label.split(' ')[0]}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -1811,81 +2169,7 @@ export default function Page() {
               </div>
 
               {/* Chat Input & Config Controls */}
-              <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                
-                {/* Smart Suggestion Tags */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {[
-                    '帮我做一张卖点图，突出面料舒适',
-                    '我想生成欧美女模，背景设定在咖啡馆',
-                    '自由构思：挂在山顶枯木上，荒野孤寂冷色调',
-                    '分析并提取这件衣服的设计特点',
-                    '生成一张3:4的极简北欧家居背景图'
-                  ].map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setChatInput(item)}
-                      className="px-3 py-1.5 bg-white dark:bg-slate-850 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100/80 dark:border-slate-800 rounded-xl text-[10px] font-bold text-slate-500 hover:text-primary transition-all text-left shadow-sm"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Persistent Params Bar */}
-                <div className="mb-4 flex flex-wrap items-center gap-6 text-xs bg-white dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-100/60 dark:border-slate-800/80 shadow-sm">
-                  {/* Ratio parameter */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">常驻尺寸:</span>
-                    <div className="flex bg-slate-100/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-100/50 dark:border-slate-705">
-                      {([
-                        { ratio: '1:1', label: '1:1 正方形' },
-                        { ratio: '3:4', label: '3:4 经典人像' },
-                        { ratio: '9:16', label: '9:16 电商竖屏' }
-                      ] as const).map((opt) => (
-                        <button
-                          key={opt.ratio}
-                          type="button"
-                          onClick={() => setConfig({ ...config, aspectRatio: opt.ratio })}
-                          className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${
-                            config.aspectRatio === opt.ratio
-                              ? 'bg-white dark:bg-slate-700 text-primary shadow-sm scale-105'
-                              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Resolution parameter */}
-                  <div className="flex items-center gap-2 border-l border-slate-100 dark:border-slate-800 pl-6">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">清晰度分级:</span>
-                    <div className="flex bg-slate-100/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-100/50 dark:border-slate-705">
-                      {([
-                        { res: '1k', label: '1K 标清' },
-                        { res: '2k', label: '2K 高清' },
-                        { res: '4k', label: '4K 超清' }
-                      ] as const).map((opt) => (
-                        <button
-                          key={opt.res}
-                          type="button"
-                          onClick={() => setCustomResolution(opt.res)}
-                          className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${
-                            customResolution === opt.res
-                              ? 'bg-white dark:bg-slate-700 text-primary shadow-sm scale-105'
-                              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
+              <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                 <form onSubmit={handleChatSend} className="relative flex items-center gap-3">
                   {/* Prepared multi-images thumbnail drawer */}
                   {chatImages.length > 0 && (
@@ -1915,7 +2199,7 @@ export default function Page() {
                   <button 
                     type="button" 
                     onClick={() => chatAttachmentRef.current?.click()}
-                    className="p-3.5 text-slate-400 hover:text-primary rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    className="p-2.5 text-slate-400 hover:text-primary rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                     title="添加服装图片 (支持多张)"
                   >
                     <Upload className="w-5 h-5" />
@@ -1931,7 +2215,7 @@ export default function Page() {
 
                   <input 
                     type="text" 
-                    className="flex-1 px-5 py-4 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm placeholder:text-slate-300 font-medium"
+                    className="flex-1 px-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-xs sm:text-sm placeholder:text-slate-300 font-medium"
                     placeholder={imageBase64 || chatImages.length > 0 ? "例如: '我想做一张沙滩上的模特场景图'..." : "请点击回形针先上传一件或多张服装原图..."}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
@@ -1941,7 +2225,7 @@ export default function Page() {
                   <button 
                     type="submit" 
                     disabled={isChatLoading || (!chatInput.trim() && chatImages.length === 0)}
-                    className="px-6 py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary/95 shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none transition-all flex items-center gap-2 shrink-0"
+                    className="px-5 py-2.5 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-primary/95 shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none transition-all flex items-center gap-2 shrink-0"
                   >
                     <Send className="w-3.5 h-3.5" />
                     发送
