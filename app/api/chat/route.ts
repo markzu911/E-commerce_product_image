@@ -174,14 +174,39 @@ export async function POST(req: NextRequest) {
 - 输出的比例（aspectRatio）只能是 '1:1'、'3:4' 或 '9:16'。
 - 绝不要遗漏 [REPLY] 和 [ACTION] 标记，确保两个标记在各自独占一行。`;
 
-    const responseStream = await ai.models.generateContentStream({
-      model: 'gemini-3.5-flash',
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
+    let responseStream;
+    try {
+      responseStream = await ai.models.generateContentStream({
+        model: 'gemini-2.5-flash',
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        }
+      });
+    } catch (err: any) {
+      console.warn('Primary model gemini-2.5-flash failed, trying fallback gemini-3.1-flash-lite...', err);
+      try {
+        responseStream = await ai.models.generateContentStream({
+          model: 'gemini-3.1-flash-lite',
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+          }
+        });
+      } catch (err2: any) {
+        console.warn('Fallback gemini-3.1-flash-lite also failed, trying gemini-3.5-flash...', err2);
+        responseStream = await ai.models.generateContentStream({
+          model: 'gemini-3.5-flash',
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.7,
+          }
+        });
       }
-    });
+    }
 
     const encoder = new TextEncoder();
     const customStream = new ReadableStream({

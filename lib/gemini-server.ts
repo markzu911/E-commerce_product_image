@@ -261,26 +261,35 @@ export async function analyzeImageServer(imageBase64: string, type: string): Pro
   };
 
   try {
-    // Try the preferred model (gemini-3.5-flash) first with backoff retry
-    const result = await retryWithBackoff(
-      () => performAnalysis('gemini-3.5-flash'),
-      2, // 2 retries
-      1500
-    );
-    return JSON.parse(result.text!) as AnalysisData;
-  } catch (error: any) {
-    console.warn(`Primary analysis model gemini-3.5-flash failed or experienced high demand. Trying fallback model gemini-3.1-flash-lite...`);
     try {
-      const fallbackResult = await retryWithBackoff(
-        () => performAnalysis('gemini-3.1-flash-lite'),
-        2, // 2 retries on fallback
+      const result = await retryWithBackoff(
+        () => performAnalysis('gemini-2.5-flash'),
+        2, // 2 retries
         1500
       );
-      return JSON.parse(fallbackResult.text!) as AnalysisData;
-    } catch (fallbackError: any) {
-      const errMsg = fallbackError?.message || String(fallbackError);
-      throw new Error(`分析商品图片失败 (模型繁忙): ${errMsg}。请稍后再试或更换图片重试。`);
+      return JSON.parse(result.text!) as AnalysisData;
+    } catch (err: any) {
+      console.warn(`Primary analysis model gemini-2.5-flash failed (error: ${err.message}). Trying fallback model gemini-3.1-flash-lite...`);
+      try {
+        const fallbackResult = await retryWithBackoff(
+          () => performAnalysis('gemini-3.1-flash-lite'),
+          2, // 2 retries on fallback
+          1500
+        );
+        return JSON.parse(fallbackResult.text!) as AnalysisData;
+      } catch (fallbackError: any) {
+        console.warn(`Fallback model gemini-3.1-flash-lite failed (error: ${fallbackError.message}). Trying final fallback model gemini-3.5-flash...`);
+        const finalResult = await retryWithBackoff(
+          () => performAnalysis('gemini-3.5-flash'),
+          2,
+          1500
+        );
+        return JSON.parse(finalResult.text!) as AnalysisData;
+      }
     }
+  } catch (finalError: any) {
+    const errMsg = finalError?.message || String(finalError);
+    throw new Error(`分析商品图片失败 (模型无法访问/繁忙): ${errMsg}。请稍后再试或更换图片重试。`);
   }
 }
 
