@@ -1022,10 +1022,39 @@ export default function Page() {
     setChatImages([]); // Reset list
     setIsChatLoading(true);
 
-    const apiMessages = [...chatMessages, newUserMsg].map(m => ({
-      role: m.role,
-      content: m.content
-    }));
+    const apiMessages = [...chatMessages, newUserMsg].map(m => {
+      let content = m.content;
+      if (m.role === 'assistant') {
+        let fullText = `[REPLY]\n${m.content}`;
+        if (m.actionType) {
+          const mockActionObj: any = {
+            action: m.actionType,
+            actionExplanation: m.actionExplanation || '',
+            detectedImageType: m.actionType === 'analyze_image' ? 'clothing' : 'none',
+            directGenerate: !m.isConfigurationRequired
+          };
+          if (m.actionType === 'generate_smart') {
+            mockActionObj.smartParams = {
+              type: m.generationDetails?.action === 'generate_smart' ? 'scene' : 'main',
+              config: {
+                modelStyle: m.generationDetails?.modelStyle,
+                sceneStyle: m.generationDetails?.sceneStyle,
+                aspectRatio: m.generationDetails?.aspectRatio,
+                resolution: m.generationDetails?.resolution
+              }
+            };
+          }
+          fullText += `\n\n[ACTION]\n${JSON.stringify(mockActionObj, null, 2)}`;
+        }
+        content = fullText;
+      }
+      return {
+        role: m.role,
+        content: content,
+        imageUrls: m.imageUrls,
+        imageUrl: m.imageUrl
+      };
+    });
 
     const typingId = `assistant-typing-${Date.now()}`;
     const newAssistantMsg: any = {
@@ -1037,17 +1066,19 @@ export default function Page() {
 
     setChatMessages(prev => [...prev, newAssistantMsg]);
 
+    const isNewUpload = chatImages.length > 0;
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: apiMessages,
-          imageBase64: activeImg || null,
-          imagesBase64: newUserMsg.imageUrls || null,
+          imageBase64: isNewUpload ? chatImages[0] : null,
+          imagesBase64: isNewUpload ? [...chatImages] : null,
           currentConfig: chatConfig,
           currentAnalysis: chatAnalysis,
-          hasClothingImage: !!chatImageBase64 || !!activeImg
+          hasClothingImage: !!chatImageBase64 || isNewUpload
         })
       });
 
