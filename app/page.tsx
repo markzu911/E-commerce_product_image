@@ -1334,6 +1334,7 @@ export default function Page() {
         content: m.content + `\n\n🎨 **AI 生图已成功完成！**`,
         generatedImageUrl: imageUrls[0],
         generatedImageUrls: imageUrls,
+        generatedImageType: configDetails.action === 'generate_smart' ? (configDetails.smartParams?.type || 'scene') : 'scene',
         isGeneratingImages: false,
         actionSuccess: true
       } : m));
@@ -2269,81 +2270,32 @@ export default function Page() {
                         <ChatGenerationCard details={msg.generationDetails} />
                       )}
 
-                      {/* AI Generated image(s) in chat bubble with direct preview and download */}
+                      {/* AI Generated image(s) in chat bubble with direct preview and text editor */}
                       {msg.generatedImageUrls && msg.generatedImageUrls.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 max-w-[650px] w-full">
                           {msg.generatedImageUrls.map((gUrl: string, idx: number) => (
-                            <div key={idx} className="border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-xl hover:shadow-2xl transition-all bg-slate-50 dark:bg-slate-900 group">
-                              <div className="relative cursor-pointer overflow-hidden" onClick={() => setActiveChatPreviewUrl(gUrl)}>
-                                <img 
-                                  src={gUrl} 
-                                  alt={`AI Generated outcome ${idx + 1}`} 
-                                  className="w-full object-cover aspect-[3/4] group-hover:scale-[1.02] transition-transform duration-500" 
-                                />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                  <span className="px-4 py-2 bg-white/95 text-slate-900 text-xs font-black rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                                    <Maximize2 className="w-3.5 h-3.5 animate-pulse" />
-                                    点击预览
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* Details & Download bar */}
-                              <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
-                                    {chatConfig.aspectRatio || '3:4'} • {chatResolution || '2k'} 画质 ({idx + 1}/{msg.generatedImageUrls.length})
-                                  </span>
-                                  <span className="text-[9px] text-slate-400 font-medium">商业级广告渲染</span>
-                                </div>
-                                <a 
-                                  href={gUrl} 
-                                  download={`fashion_ai_${idx + 1}_${Date.now()}.jpg`}
-                                  className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 shadow-sm"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Download className="w-3 h-3" />
-                                  下载
-                                </a>
-                              </div>
-                            </div>
+                            <ChatResultCard
+                              key={idx}
+                              imgSrc={gUrl}
+                              userId={userId}
+                              toolId={toolId}
+                              initialType={msg.generatedImageType || 'scene'}
+                              chatAnalysis={chatAnalysis}
+                              chatConfig={chatConfig}
+                            />
                           ))}
                         </div>
                       ) : (
                         msg.generatedImageUrl && (
-                          <div className="mt-3 border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-xl hover:shadow-2xl transition-all max-w-[400px] bg-slate-50 dark:bg-slate-900 group">
-                            <div className="relative cursor-pointer overflow-hidden" onClick={() => setActiveChatPreviewUrl(msg.generatedImageUrl)}>
-                              <img 
-                                src={msg.generatedImageUrl} 
-                                alt="AI Generated outcome" 
-                                className="w-full object-cover aspect-[3/4] group-hover:scale-[1.02] transition-transform duration-500" 
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                <span className="px-4 py-2 bg-white/95 text-slate-900 text-xs font-black rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                                  <Maximize2 className="w-3.5 h-3.5 animate-pulse" />
-                                  点击预览高清图
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {/* Details & Download bar */}
-                            <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                              <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">
-                                  {chatConfig.aspectRatio || '3:4'} • {chatResolution || '2k'} 画质
-                                </span>
-                                <span className="text-[9px] text-slate-400 font-medium">商业级广告渲染</span>
-                              </div>
-                              <a 
-                                href={msg.generatedImageUrl} 
-                                download={`fashion_ai_${Date.now()}.jpg`}
-                                className="px-4 py-2 bg-primary/10 hover:bg-primary text-primary hover:text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                下载原图
-                              </a>
-                            </div>
+                          <div className="mt-3 max-w-[400px] w-full">
+                            <ChatResultCard
+                              imgSrc={msg.generatedImageUrl}
+                              userId={userId}
+                              toolId={toolId}
+                              initialType={msg.generatedImageType || 'scene'}
+                              chatAnalysis={chatAnalysis}
+                              chatConfig={chatConfig}
+                            />
                           </div>
                         )
                       )}
@@ -3017,6 +2969,338 @@ function ResultCard({ type, imgSrc, analysis, userId, toolId, config }: { type: 
         </DialogContent>
       </Dialog>
 
+    </div>
+  );
+}
+
+function ChatResultCard({ 
+  imgSrc, 
+  userId, 
+  toolId, 
+  initialType = 'scene', 
+  chatAnalysis, 
+  chatConfig 
+}: { 
+  imgSrc: string; 
+  userId: string; 
+  toolId: string; 
+  initialType?: 'main' | 'detail' | 'sellingPoint' | 'scene'; 
+  chatAnalysis?: any; 
+  chatConfig?: any; 
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [currentType, setCurrentType] = useState<'main' | 'detail' | 'sellingPoint' | 'scene'>(initialType);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string>('');
+  const [videoDownloadUrl, setVideoDownloadUrl] = useState<string>('');
+  
+  const analysisToUse = chatAnalysis || {
+    productName: '时尚服装',
+    style: '大牌设计',
+    materials: '优质面料',
+    season: '四季通用',
+    sellingPoints: ['精工细作', '时尚版型'],
+    brandName: 'FASHION BRAND',
+    posterTheme: '探索灵感'
+  };
+
+  const [tConf, setTConf] = useState<TextOverlayConfig>({
+    mainTitle: analysisToUse.productName || '时尚新品',
+    subTitle: analysisToUse.style || '典雅风格',
+    price: '¥299',
+    promoBadge: 'NEW',
+    detailInfo: [analysisToUse.productName, analysisToUse.materials, analysisToUse.style, analysisToUse.season].filter(Boolean) as string[],
+    sellingPointTexts: analysisToUse.sellingPoints || ['精选用料', '匠心工艺'],
+    sceneTitle: analysisToUse.brandName || 'FASHION BRAND',
+    sceneSubtitle: analysisToUse.posterTheme || '探索无限可能'
+  });
+
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
+  const drawCanvas = useCallback(() => {
+    if (!imgSrc || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      drawTextOverlay(canvas, currentType, tConf);
+      setPreviewUrl(canvas.toDataURL());
+    };
+    img.src = imgSrc;
+  }, [imgSrc, currentType, tConf]);
+
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
+
+  const handleGenerateVideo = async () => {
+    if (!imgSrc || !canvasRef.current) return;
+    setIsVideoGenerating(true);
+    setVideoUrl('');
+    setVideoDownloadUrl('');
+    try {
+      const tempCanvas = document.createElement('canvas');
+      const ctx = tempCanvas.getContext('2d');
+      if (!ctx) throw new Error('Could not get 2D context');
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      const cleanImgData = await new Promise<string>((resolve, reject) => {
+        img.onload = () => {
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          resolve(tempCanvas.toDataURL('image/jpeg', 0.95));
+        };
+        img.onerror = () => {
+          reject(new Error('Failed to load raw image to generate video'));
+        };
+        img.src = imgSrc;
+      });
+
+      const { videoUrl, downloadUrl } = await generateVideo(
+        cleanImgData, 
+        userId, 
+        toolId, 
+        analysisToUse, 
+        chatConfig || {
+          garmentCategory: '', garmentColor: '', garmentMaterial: '', garmentStyle: '',
+          modelStyle: '', sceneStyle: '', sellingPoint1: '', sellingPoint2: '', sellingPoint3: '',
+          brandName: '', sceneTheme: '', resolution: '2k', aspectRatio: '3:4'
+        }
+      );
+      setVideoUrl(videoUrl);
+      setVideoDownloadUrl(downloadUrl);
+    } catch (err: any) {
+      console.error('Video generation failed', err);
+      alert(`视频生成失败: ${err.message}`);
+    } finally {
+      setIsVideoGenerating(false);
+    }
+  };
+
+  const downloadImage = () => {
+    if (canvasRef.current) {
+      const link = document.createElement('a');
+      link.download = `${currentType}-chat-master.png`;
+      link.href = canvasRef.current.toDataURL();
+      link.click();
+    }
+  };
+
+  const labels: Record<string, string> = {
+    main: '商品主图',
+    detail: '材质细节',
+    sellingPoint: '卖点海报',
+    scene: '真人场景'
+  };
+
+  return (
+    <div className="border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-xl hover:shadow-2xl transition-all bg-slate-50 dark:bg-slate-900 group flex flex-col h-full text-slate-800 dark:text-slate-100">
+      {/* Media view area */}
+      <div className="relative cursor-pointer overflow-hidden aspect-[3/4]" onClick={() => setIsPreviewOpen(true)}>
+        {videoUrl ? (
+          <video 
+            src={videoUrl} 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            controls 
+            className="w-full h-full object-cover"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <>
+            <canvas ref={canvasRef} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+              <span className="px-4 py-2 bg-white/95 text-slate-900 text-xs font-black rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                <Maximize2 className="w-3.5 h-3.5 animate-pulse" />
+                点击预览高清图
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Video generating loading state */}
+        {isVideoGenerating && (
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3 text-white z-10">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 animate-pulse">Veo 视频合成中</span>
+          </div>
+        )}
+      </div>
+
+      {/* Control / Info bar */}
+      <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col text-left">
+            <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              {labels[currentType]} Layout
+            </span>
+            <span className="text-[9px] text-slate-400 font-medium">商业级排版设计</span>
+          </div>
+          
+          {/* Quick Action Button Group */}
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            {/* Edit Text Button */}
+            <Button 
+              size="icon" 
+              variant="outline" 
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-primary/5 hover:text-primary transition-all bg-transparent" 
+              onClick={() => setIsEditOpen(true)}
+              title="编辑排版文字"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </Button>
+
+            {/* Video Generation Button */}
+            <Button 
+              size="icon" 
+              variant="outline" 
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-primary/5 hover:text-primary transition-all bg-transparent"
+              disabled={isVideoGenerating}
+              onClick={handleGenerateVideo}
+              title="生成展示视频"
+            >
+              {isVideoGenerating ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+              ) : (
+                <Video className="w-3.5 h-3.5" />
+              )}
+            </Button>
+
+            {/* Download Button */}
+            <Button 
+              size="icon" 
+              variant="default"
+              className="w-8 h-8 rounded-xl bg-primary hover:bg-primary/95 text-white transition-all shadow-sm" 
+              onClick={downloadImage}
+              title="下载成品图"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview Modal */}
+      {isPreviewOpen && (
+        <div 
+          className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300"
+          onClick={() => setIsPreviewOpen(false)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={previewUrl || imgSrc} 
+              alt="Preview Master" 
+              className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300" 
+            />
+            <Button 
+              variant="secondary"
+              size="icon"
+              className="absolute -top-4 -right-4 md:top-6 md:right-6 w-12 h-12 rounded-full shadow-2xl border border-white/10 backdrop-blur-md bg-black/40 hover:bg-black/60 text-white transition-all hover:scale-105 z-[160]"
+              onClick={() => setIsPreviewOpen(false)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-md rounded-[32px] p-8 z-[150]">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black tracking-tight">对话图片文案精雕</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-2 max-h-[60vh] overflow-y-auto pr-4 scrollbar-hide" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Layout Type Selection */}
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">切换海报版式</h4>
+              <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200/40 dark:border-slate-800">
+                {(['main', 'detail', 'sellingPoint', 'scene'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setCurrentType(t)}
+                    className={`py-1.5 text-[10px] font-black rounded-lg transition-all ${
+                      currentType === t 
+                      ? 'bg-white dark:bg-slate-850 shadow-sm text-primary font-bold' 
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {labels[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">基础信息</h4>
+              <EditableTextField label="主标题" value={tConf.mainTitle} onChange={(v) => setTConf({...tConf, mainTitle: v})} />
+              <EditableTextField label="副标题" value={tConf.subTitle} onChange={(v) => setTConf({...tConf, subTitle: v})} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">价格策略</h4>
+                <EditableTextField label="价格" value={tConf.price} onChange={(v) => setTConf({...tConf, price: v})} />
+              </div>
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">促销标识</h4>
+                <EditableTextField label="徽标" value={tConf.promoBadge} onChange={(v) => setTConf({...tConf, promoBadge: v})} />
+              </div>
+            </div>
+
+            {currentType === 'detail' && (
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">参数面板</h4>
+                <EditableTextField 
+                  label="详情列表 (逗号分隔)" 
+                  value={tConf.detailInfo.join(', ')} 
+                  onChange={(v) => setTConf({...tConf, detailInfo: v.split(',').map(s=>s.trim())})} 
+                />
+              </div>
+            )}
+            
+            {currentType === 'sellingPoint' && (
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">卖点内容</h4>
+                <EditableTextField 
+                  label="核心卖点 (逗号分隔)" 
+                  value={tConf.sellingPointTexts.join(', ')} 
+                  onChange={(v) => setTConf({...tConf, sellingPointTexts: v.split(',').map(s=>s.trim())})} 
+                />
+              </div>
+            )}
+            
+            {currentType === 'scene' && (
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">品牌心智</h4>
+                <EditableTextField label="品牌名" value={tConf.sceneTitle} onChange={(v) => setTConf({...tConf, sceneTitle: v})} />
+                <EditableTextField label="品牌 Slogan" value={tConf.sceneSubtitle} onChange={(v) => setTConf({...tConf, sceneSubtitle: v})} />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end pt-8 mt-4 border-t" onClick={(e) => e.stopPropagation()}>
+            <Button onClick={() => setIsEditOpen(false)} className="rounded-full px-10 h-12 font-bold shadow-lg shadow-primary/20">
+              确定并更新排版
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
