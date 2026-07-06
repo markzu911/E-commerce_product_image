@@ -331,9 +331,15 @@ function buildPrompt(
       Vibe: ${vars.model_style}.
       Garment: ${garmentDesc}.`;
     } else {
-      basePrompt = `【模特上身展示】
-      1. GARMENT: MUST be 100% IDENTICAL to the reference product image. Absolutely zero modifications, omissions, or simplifications to design, shape, cuts, collar/neckline shape, sleeve length, stitches, buttons, zippers, pockets, patterns, textures, colors, or details are allowed.
-      2. MODEL: Professional model, ${vars.model_style} vibe. Natural posing.
+      basePrompt = `【模特上身展示与自适应姿势 - 严禁复制原图模特与分镜】
+      1. GARMENT: MUST be 100% IDENTICAL to the garment shown in the reference product image. Only transfer and wear the clothing (shape, design, fabric, color, patterns) onto the new model.
+      2. NEW MODEL IDENTITY & CHARACTERISTICS (ETHNICITY ADAPTATION):
+         - You MUST generate a completely new, professional fashion model who perfectly matches the specified style: "${vars.model_style}".
+         - If "${vars.model_style}" contains any specific ethnicity or appearance keyword (such as "欧美", "欧美时尚模特", "欧美超模", "Western", "Caucasian", "blonde", "black", "African", etc.), you MUST generate a model of THAT requested ethnicity and appearance.
+         - DO NOT reuse or clone the face, body, hair, skin color, or ethnicity of any model shown in the reference product image. 
+         - The model's face, ethnicity, and pose MUST be generated fully custom-fit to the style: "${vars.model_style}".
+      3. POSE VARIATION & DYNAMIC RENDER:
+         - The model MUST have a completely different, natural, and highly professional fashion pose (standing, sitting, walking) that fits the theme. DO NOT copy or replicate the pose from the reference image.
       Garment: ${garmentDesc}.`;
     }
 
@@ -351,6 +357,10 @@ function buildPrompt(
           basePrompt += `\nScene Backdrop Theme: ${vars.scene_style || vars.scene_theme}. Professional high-end fashion photography location photoshoot, beautifully integrated with the model.`;
         }
         break;
+    }
+
+    if (type !== 'detail') {
+      basePrompt += `\n【CRITICAL FORMAT MANDATE】: You MUST generate a SINGLE, continuous, seamless, and unified fashion photograph. DO NOT generate split-screen, diptych, triptych, multi-panel, grid, or collage images under any circumstances! There must be exactly one model in one single unified frame.`;
     }
   }
 

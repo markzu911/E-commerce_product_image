@@ -1094,16 +1094,47 @@ export default function Page() {
               return;
             }
 
-            // Interrupt and show options config card
-            setChatMessages(prev => prev.map(m => m.id === typingId ? {
-              ...m,
-              isConfigurationRequired: true,
-              configDetails: {
+            if (parsedAction.directGenerate === true) {
+              const defaultModelStyle = smartParams.config?.modelStyle || chatConfig.modelStyle || '高阶立体模特/国风超模';
+              const defaultSceneStyle = smartParams.config?.sceneStyle || chatConfig.sceneStyle || '北欧极简暖雅原木家居，温和阳光柔和漫反射';
+              
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                isConfigurationRequired: false,
+                isGeneratingImages: true,
+                generationDetails: {
+                  action: 'generate_smart',
+                  aspectRatio: chatConfig.aspectRatio,
+                  resolution: chatResolution,
+                  modelStyle: defaultModelStyle,
+                  sceneStyle: defaultSceneStyle,
+                  sceneTheme: smartParams.config?.sceneTheme || '展示场景'
+                }
+              } : m));
+
+              handleConfirmRender(typingId, {
                 action: 'generate_smart',
                 smartParams: smartParams,
                 refs: refs
-              }
-            } : m));
+              }, {
+                modelBase64: modelBase64 || null,
+                modelStyle: defaultModelStyle,
+                sceneBase64: sceneBase64 || null,
+                selectedPresetId: selectedPresetId || '',
+                sceneStyle: defaultSceneStyle
+              });
+            } else {
+              // Interrupt and show options config card
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                isConfigurationRequired: true,
+                configDetails: {
+                  action: 'generate_smart',
+                  smartParams: smartParams,
+                  refs: refs
+                }
+              } : m));
+            }
           }
           else if (action === 'generate_custom' && customParams) {
             const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
@@ -1120,16 +1151,47 @@ export default function Page() {
               return;
             }
 
-            // Interrupt and show options config card
-            setChatMessages(prev => prev.map(m => m.id === typingId ? {
-              ...m,
-              isConfigurationRequired: true,
-              configDetails: {
+            if (parsedAction.directGenerate === true) {
+              const defaultModelStyle = chatConfig.modelStyle || '高阶立体模特/国风超模';
+              const defaultSceneStyle = customParams.prompt || chatConfig.sceneStyle || '极简外景拍照';
+              
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                isConfigurationRequired: false,
+                isGeneratingImages: true,
+                generationDetails: {
+                  action: 'generate_custom',
+                  aspectRatio: chatConfig.aspectRatio,
+                  resolution: chatResolution,
+                  modelStyle: defaultModelStyle,
+                  sceneStyle: defaultSceneStyle,
+                  sceneTheme: '自由生图'
+                }
+              } : m));
+
+              handleConfirmRender(typingId, {
                 action: 'generate_custom',
                 customParams: customParams,
                 refs: refs
-              }
-            } : m));
+              }, {
+                modelBase64: modelBase64 || null,
+                modelStyle: defaultModelStyle,
+                sceneBase64: sceneBase64 || null,
+                selectedPresetId: selectedPresetId || '',
+                sceneStyle: defaultSceneStyle
+              });
+            } else {
+              // Interrupt and show options config card
+              setChatMessages(prev => prev.map(m => m.id === typingId ? {
+                ...m,
+                isConfigurationRequired: true,
+                configDetails: {
+                  action: 'generate_custom',
+                  customParams: customParams,
+                  refs: refs
+                }
+              } : m));
+            }
           }
         }
       }
