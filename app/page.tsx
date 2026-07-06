@@ -130,7 +130,6 @@ async function compressImage(base64: string, maxWidth = 1200, maxHeight = 1200):
 
 function ChatGenerationCard({ details }: { details: any }) {
   const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -145,12 +144,10 @@ function ChatGenerationCard({ details }: { details: any }) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (progress < 25) setCurrentStep(0);
-    else if (progress < 55) setCurrentStep(1);
-    else if (progress < 80) setCurrentStep(2);
-    else setCurrentStep(3);
-  }, [progress]);
+  const currentStep = progress < 25 ? 0 
+    : progress < 55 ? 1 
+    : progress < 80 ? 2 
+    : 3;
 
   const steps = [
     '解析服装物理材质、经纬织法与特征轮廓...',
@@ -169,7 +166,7 @@ function ChatGenerationCard({ details }: { details: any }) {
           <div className="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary animate-spin">
             <Loader2 className="w-4 h-4" />
           </div>
-          <div>
+          <div className="text-left">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <span>{actionName}</span>
               <span className="text-[10px] text-primary font-bold">● CREATING</span>
@@ -185,23 +182,23 @@ function ChatGenerationCard({ details }: { details: any }) {
 
       {/* Grid of details */}
       <div className="grid grid-cols-2 gap-3 bg-white dark:bg-slate-950/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px]">
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 text-left">
           <span className="text-[9px] font-bold text-slate-400 uppercase">渲染画幅</span>
           <p className="font-black text-slate-700 dark:text-slate-300">{details?.aspectRatio || '3:4'}</p>
         </div>
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 text-left">
           <span className="text-[9px] font-bold text-slate-400 uppercase">输出分辨率</span>
           <p className="font-black text-slate-700 dark:text-slate-300">{(details?.resolution || '2k').toUpperCase()} 画质</p>
         </div>
         {details?.action === 'generate_smart' ? (
           <>
-            <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2">
+            <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2 text-left">
               <span className="text-[9px] font-bold text-slate-400 uppercase">构思模特风格</span>
               <p className="font-bold text-slate-700 dark:text-slate-300 text-[10px] leading-tight">
                 {details?.modelStyle || '高阶立体模特 / 真实国潮名模'}
               </p>
             </div>
-            <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2">
+            <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2 text-left">
               <span className="text-[9px] font-bold text-slate-400 uppercase">场景空间主题</span>
               <p className="font-bold text-slate-700 dark:text-slate-300 text-[10px] leading-tight">
                 {details?.sceneStyle || '极简光影棚拍 / 创意商业空间'}
@@ -209,10 +206,10 @@ function ChatGenerationCard({ details }: { details: any }) {
             </div>
           </>
         ) : (
-          <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2">
+          <div className="space-y-0.5 col-span-2 border-t border-slate-50 dark:border-slate-800 pt-2 text-left">
             <span className="text-[9px] font-bold text-slate-400 uppercase">AI 创意提示词</span>
             <p className="font-medium text-slate-600 dark:text-slate-400 text-[10px] leading-normal italic line-clamp-2">
-              "{details?.prompt}"
+              &ldquo;{details?.prompt}&rdquo;
             </p>
           </div>
         )}
@@ -261,6 +258,282 @@ function ChatGenerationCard({ details }: { details: any }) {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+interface ChatRenderOptionsCardProps {
+  details: {
+    action: 'generate_smart' | 'generate_custom';
+    smartParams?: any;
+    customParams?: any;
+    refs: string[];
+  };
+  onConfirm: (config: {
+    modelBase64: string | null;
+    modelStyle: string;
+    sceneBase64: string | null;
+    selectedPresetId: string;
+    sceneStyle: string;
+  }) => void;
+}
+
+function ChatRenderOptionsCard({ details, onConfirm }: ChatRenderOptionsCardProps) {
+  const [modelType, setModelType] = useState<'system' | 'custom'>('system');
+  const [customModelBase64, setCustomModelBase64] = useState<string | null>(null);
+  const [modelStyle, setModelStyle] = useState<string>(
+    details.smartParams?.config?.modelStyle || '高阶立体模特/国风超模'
+  );
+  
+  const [sceneType, setSceneType] = useState<'preset' | 'custom'>('preset');
+  const [customSceneBase64, setCustomSceneBase64] = useState<string | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('nordic_living');
+  const [sceneStyle, setSceneStyle] = useState<string>(
+    details.smartParams?.config?.sceneStyle || '北欧极简暖雅原木家居，温和阳光柔和漫反射'
+  );
+
+  const modelPresets = [
+    '高阶立体模特/国风超模',
+    '欧美简约超模',
+    '日韩甜美少女',
+    '运动阳光型男'
+  ];
+
+  const handleModelImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setCustomModelBase64(reader.result);
+        setModelType('custom');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSceneImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setCustomSceneBase64(reader.result);
+        setSceneType('custom');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePresetSelect = (presetId: string) => {
+    const preset = PRESET_SCENES.find(p => p.id === presetId);
+    if (preset) {
+      setSelectedPresetId(presetId);
+      setSceneStyle(preset.styleText);
+      setSceneType('preset');
+    }
+  };
+
+  return (
+    <div className="w-full max-w-[550px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5 shadow-lg space-y-4 animate-in fade-in zoom-in-95 duration-300">
+      {/* Header */}
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+          <Wand2 className="w-4 h-4" />
+        </div>
+        <div className="text-left">
+          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
+            AI 绘图配置与确认
+          </h4>
+          <p className="text-[10px] text-slate-400">请选择并微调本次渲染所需的模特与场景空间</p>
+        </div>
+      </div>
+
+      {/* 1. Model Configuration */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            模特选择
+          </span>
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-bold">
+            <button
+              onClick={() => setModelType('system')}
+              className={`px-3 py-1 rounded-md transition-all ${modelType === 'system' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              系统默认模特
+            </button>
+            <button
+              onClick={() => setModelType('custom')}
+              className={`px-3 py-1 rounded-md transition-all ${modelType === 'custom' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              自定义上传
+            </button>
+          </div>
+        </div>
+
+        {modelType === 'system' ? (
+          <div className="space-y-2 text-left">
+            <div className="flex flex-wrap gap-1.5">
+              {modelPresets.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setModelStyle(p)}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all border ${modelStyle === p ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-50 dark:bg-slate-950/40 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <Input
+              value={modelStyle}
+              onChange={(e) => setModelStyle(e.target.value)}
+              placeholder="或输入您自定义的模特特征..."
+              className="text-xs font-medium h-8 bg-slate-50/50 dark:bg-slate-950/20"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950/25 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+            {customModelBase64 ? (
+              <div className="relative w-12 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0 bg-slate-100">
+                <img src={customModelBase64} className="w-full h-full object-cover" alt="Custom model" />
+                <button
+                  onClick={() => setCustomModelBase64(null)}
+                  className="absolute top-1 right-1 p-0.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-all"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="w-12 h-16 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary flex flex-col items-center justify-center cursor-pointer shrink-0 transition-all bg-white dark:bg-slate-900">
+                <Upload className="w-4 h-4 text-slate-400" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleModelImageUpload}
+                  className="hidden"
+                />
+              </label>
+            )}
+            <div className="text-left">
+              <p className="text-xs font-black text-slate-700 dark:text-slate-300">
+                {customModelBase64 ? '已成功上传自定义模特' : '上传一张姿势/面容参考图'}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                AI 将融合此模特的外形、身材姿势来进行高级服装渲染。若不上传，则将根据指定的文字描述生成系统默认模特。
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Scene Configuration */}
+      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            场景配置
+          </span>
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-bold">
+            <button
+              onClick={() => setSceneType('preset')}
+              className={`px-3 py-1 rounded-md transition-all ${sceneType === 'preset' ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-500' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              推荐场景风格
+            </button>
+            <button
+              onClick={() => setSceneType('custom')}
+              className={`px-3 py-1 rounded-md transition-all ${sceneType === 'custom' ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-500' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              自定义背景图
+            </button>
+          </div>
+        </div>
+
+        {sceneType === 'preset' ? (
+          <div className="space-y-2 text-left">
+            {/* Scrollable preset scenes */}
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {PRESET_SCENES.map((p) => {
+                const isSelected = selectedPresetId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handlePresetSelect(p.id)}
+                    type="button"
+                    className={`flex-none w-28 text-left rounded-xl overflow-hidden border transition-all relative group ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/25' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}
+                  >
+                    <div className="h-14 w-full bg-slate-100 relative overflow-hidden">
+                      <img src={p.previewUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={p.name} />
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-indigo-500/10 flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-indigo-500 bg-white dark:bg-slate-900 rounded-full shadow" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-1.5 bg-slate-50 dark:bg-slate-950/50">
+                      <p className="text-[9px] font-black text-slate-700 dark:text-slate-300 truncate">{p.name}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <Input
+              value={sceneStyle}
+              onChange={(e) => setSceneStyle(e.target.value)}
+              placeholder="调整场景提示词..."
+              className="text-xs font-medium h-8 bg-slate-50/50 dark:bg-slate-950/20"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950/25 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+            {customSceneBase64 ? (
+              <div className="relative w-16 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 shrink-0 bg-slate-100">
+                <img src={customSceneBase64} className="w-full h-full object-cover" alt="Custom scene" />
+                <button
+                  onClick={() => setCustomSceneBase64(null)}
+                  className="absolute top-1 right-1 p-0.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition-all"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="w-16 h-12 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-primary flex flex-col items-center justify-center cursor-pointer shrink-0 transition-all bg-white dark:bg-slate-900">
+                <Upload className="w-4 h-4 text-slate-400" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleSceneImageUpload}
+                  className="hidden"
+                />
+              </label>
+            )}
+            <div className="text-left">
+              <p className="text-xs font-black text-slate-700 dark:text-slate-300">
+                {customSceneBase64 ? '已成功上传自定义背景图' : '上传一张背景参考图'}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                AI 将提取该图片中的空间透视、色彩与构图风格作为渲染背景。
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Render Trigger Button */}
+      <Button
+        onClick={() => onConfirm({
+          modelBase64: modelType === 'custom' ? customModelBase64 : null,
+          modelStyle,
+          sceneBase64: sceneType === 'custom' ? customSceneBase64 : null,
+          selectedPresetId: sceneType === 'preset' ? selectedPresetId : '',
+          sceneStyle
+        })}
+        className="w-full h-9 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-black tracking-wider flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] transition-all"
+      >
+        <Sparkles className="w-4 h-4" />
+        确认并开始智能渲染
+      </Button>
     </div>
   );
 }
@@ -790,79 +1063,21 @@ export default function Page() {
               return;
             }
 
-            const genType = smartParams.type || 'main';
-
-            let finalAnalysis = chatAnalysis;
-            if (smartParams.analysis) {
-              finalAnalysis = chatAnalysis ? { ...chatAnalysis, ...smartParams.analysis } : (smartParams.analysis as any);
-              setChatAnalysis(finalAnalysis);
-            }
-            
-            let finalConfig = chatConfig;
-            if (smartParams.config) {
-              finalConfig = { ...chatConfig, ...smartParams.config };
-              setChatConfig(finalConfig);
-            }
-
-            // Trigger visual progress card in chat box
+            // Interrupt and show options config card
             setChatMessages(prev => prev.map(m => m.id === typingId ? {
               ...m,
-              isGeneratingImages: true,
-              generationDetails: {
+              isConfigurationRequired: true,
+              configDetails: {
                 action: 'generate_smart',
-                aspectRatio: chatConfig.aspectRatio,
-                resolution: chatResolution,
-                modelStyle: finalConfig.modelStyle || '高阶立体模特/国风超模',
-                sceneStyle: finalConfig.sceneStyle || '极简高阶棚拍',
-                sceneTheme: finalConfig.sceneTheme || '展示场景'
+                smartParams: smartParams,
+                refs: refs
               }
             } : m));
-
-            setIsGenerating(true);
-            try {
-              const imageUrls: string[] = [];
-              for (let i = 0; i < refs.length; i++) {
-                const currentRef = refs[i];
-                const { imageUrl } = await generateImage(
-                   genType,
-                   currentRef,
-                   modelBase64 || null,
-                   sceneBase64 || null,
-                   finalAnalysis || { productName: '商品', category: '服装', style: '简约', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' },
-                   {
-                     ...finalConfig,
-                     aspectRatio: chatConfig.aspectRatio,
-                     resolution: chatResolution,
-                     isCustomScene: !!sceneBase64 && !selectedPresetId,
-                   },
-                   userId,
-                   toolId
-                );
-                imageUrls.push(imageUrl);
-              }
-              setChatMessages(prev => prev.map(m => m.id === typingId ? {
-                ...m,
-                content: m.content + `\n\n🎨 **AI 生图已成功完成！**`,
-                generatedImageUrl: imageUrls[0],
-                generatedImageUrls: imageUrls,
-                isGeneratingImages: false,
-                actionSuccess: true
-              } : m));
-              callLaunch(userId, toolId, true);
-            } catch (err: any) {
-              setChatMessages(prev => prev.map(m => m.id === typingId ? {
-                ...m,
-                content: m.content + `\n\n❌ **生图生成失败:** ${err.message}`,
-                isGeneratingImages: false,
-                actionSuccess: false
-              } : m));
-            }
-            setIsGenerating(false);
           }
           else if (action === 'generate_custom' && customParams) {
-            const cPrompt = customParams.prompt;
-            const cRes = customParams.resolution || chatResolution;
-            setChatResolution(cRes);
+            const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
+              ? newUserMsg.imageUrls 
+              : (activeImg ? [activeImg] : []);
 
             if (!userId || !toolId) {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
@@ -874,54 +1089,16 @@ export default function Page() {
               return;
             }
 
-            const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
-              ? newUserMsg.imageUrls 
-              : (activeImg ? [activeImg] : []);
-
-            // Trigger visual progress card in chat box
+            // Interrupt and show options config card
             setChatMessages(prev => prev.map(m => m.id === typingId ? {
               ...m,
-              isGeneratingImages: true,
-              generationDetails: {
+              isConfigurationRequired: true,
+              configDetails: {
                 action: 'generate_custom',
-                prompt: cPrompt,
-                resolution: cRes,
-                aspectRatio: chatConfig.aspectRatio
+                customParams: customParams,
+                refs: refs
               }
             } : m));
-
-            setIsGenerating(true);
-            try {
-              const imageUrls: string[] = [];
-              if (refs.length === 0) {
-                const { imageUrl } = await generateCustomImage(cPrompt, null, userId, toolId, cRes);
-                imageUrls.push(imageUrl);
-              } else {
-                for (let i = 0; i < refs.length; i++) {
-                  const currentRef = refs[i];
-                  const { imageUrl } = await generateCustomImage(cPrompt, currentRef, userId, toolId, cRes);
-                  imageUrls.push(imageUrl);
-                }
-              }
-
-              setChatMessages(prev => prev.map(m => m.id === typingId ? {
-                ...m,
-                content: m.content + `\n\n🎨 **自由生图已顺利完成！**`,
-                generatedImageUrl: imageUrls[0],
-                generatedImageUrls: imageUrls,
-                isGeneratingImages: false,
-                actionSuccess: true
-              } : m));
-              callLaunch(userId, toolId, true);
-            } catch (err: any) {
-              setChatMessages(prev => prev.map(m => m.id === typingId ? {
-                ...m,
-                content: m.content + `\n\n❌ **自由生图创作失败:** ${err.message}`,
-                isGeneratingImages: false,
-                actionSuccess: false
-              } : m));
-            }
-            setIsGenerating(false);
           }
         }
       }
@@ -953,6 +1130,130 @@ export default function Page() {
         chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 150);
     }
+  };
+
+  const handleConfirmRender = async (
+    msgId: string,
+    configDetails: {
+      action: 'generate_smart' | 'generate_custom';
+      smartParams?: any;
+      customParams?: any;
+      refs: string[];
+    },
+    confirmConfig: {
+      modelBase64: string | null;
+      modelStyle: string;
+      sceneBase64: string | null;
+      selectedPresetId: string;
+      sceneStyle: string;
+    }
+  ) => {
+    // 1. Hide the config card, show loading card in the message bubble
+    setChatMessages(prev => prev.map(m => m.id === msgId ? {
+      ...m,
+      isConfigurationRequired: false,
+      isGeneratingImages: true,
+      generationDetails: {
+        action: configDetails.action,
+        aspectRatio: chatConfig.aspectRatio,
+        resolution: chatResolution,
+        modelStyle: confirmConfig.modelStyle,
+        sceneStyle: confirmConfig.sceneStyle,
+        sceneTheme: configDetails.smartParams?.config?.sceneTheme || '展示场景'
+      }
+    } : m));
+
+    setIsGenerating(true);
+    try {
+      const refs = configDetails.refs;
+      const imageUrls: string[] = [];
+
+      // Determine the final model/scene base64s
+      let finalModelBase64 = confirmConfig.modelBase64;
+      let finalSceneBase64 = confirmConfig.sceneBase64;
+
+      if (confirmConfig.selectedPresetId && !finalSceneBase64) {
+        const p = PRESET_SCENES.find(item => item.id === confirmConfig.selectedPresetId);
+        if (p) {
+          try {
+            finalSceneBase64 = await urlToBase64(p.previewUrl);
+          } catch (e) {
+            console.warn('Failed to load selected preset image base64, using fallback text:', e);
+          }
+        }
+      }
+
+      if (configDetails.action === 'generate_smart') {
+        const smartParams = configDetails.smartParams;
+        const genType = smartParams?.type || 'main';
+
+        let finalAnalysis = chatAnalysis;
+        if (smartParams?.analysis) {
+          finalAnalysis = chatAnalysis ? { ...chatAnalysis, ...smartParams.analysis } : (smartParams.analysis as any);
+          setChatAnalysis(finalAnalysis);
+        }
+
+        const finalConfig = {
+          ...chatConfig,
+          ...(smartParams?.config || {}),
+          modelStyle: confirmConfig.modelStyle,
+          sceneStyle: confirmConfig.sceneStyle,
+          aspectRatio: chatConfig.aspectRatio,
+          resolution: chatResolution,
+          isCustomScene: !!finalSceneBase64
+        };
+        setChatConfig(finalConfig);
+
+        for (let i = 0; i < refs.length; i++) {
+          const currentRef = refs[i];
+          const { imageUrl } = await generateImage(
+            genType,
+            currentRef,
+            finalModelBase64 || null,
+            finalSceneBase64 || null,
+            finalAnalysis || { productName: '商品', category: '服装', style: '简约', colors: [], materials: '', season: '', description: '', sellingPoints: [], targetAudience: '', keywords: [], modelStyle: '', sceneStyle: '', brandName: '', posterTheme: '' },
+            finalConfig,
+            userId,
+            toolId
+          );
+          imageUrls.push(imageUrl);
+        }
+      } else {
+        // Custom Mode
+        const customParams = configDetails.customParams;
+        const cPrompt = `${customParams?.prompt || 'fashion photoshoot'}. Model features: ${confirmConfig.modelStyle}. Background scene features: ${confirmConfig.sceneStyle}.`;
+        const cRes = customParams?.resolution || chatResolution;
+
+        if (refs.length === 0) {
+          const { imageUrl } = await generateCustomImage(cPrompt, null, userId, toolId, cRes);
+          imageUrls.push(imageUrl);
+        } else {
+          for (let i = 0; i < refs.length; i++) {
+            const currentRef = refs[i];
+            const { imageUrl } = await generateCustomImage(cPrompt, currentRef, userId, toolId, cRes);
+            imageUrls.push(imageUrl);
+          }
+        }
+      }
+
+      setChatMessages(prev => prev.map(m => m.id === msgId ? {
+        ...m,
+        content: m.content + `\n\n🎨 **AI 生图已成功完成！**`,
+        generatedImageUrl: imageUrls[0],
+        generatedImageUrls: imageUrls,
+        isGeneratingImages: false,
+        actionSuccess: true
+      } : m));
+      callLaunch(userId, toolId, true);
+    } catch (err: any) {
+      setChatMessages(prev => prev.map(m => m.id === msgId ? {
+        ...m,
+        content: m.content + `\n\n❌ **生图生成失败:** ${err.message}`,
+        isGeneratingImages: false,
+        actionSuccess: false
+      } : m));
+    }
+    setIsGenerating(false);
   };
 
   if (!mounted) return null;
@@ -1859,6 +2160,13 @@ export default function Page() {
                         }`}>
                           {msg.content}
                         </div>
+                      )}
+
+                      {msg.isConfigurationRequired && msg.configDetails && (
+                        <ChatRenderOptionsCard 
+                          details={msg.configDetails} 
+                          onConfirm={(config) => handleConfirmRender(msg.id, msg.configDetails!, config)} 
+                        />
                       )}
 
                       {msg.isGeneratingImages && (
