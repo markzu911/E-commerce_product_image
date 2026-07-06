@@ -895,6 +895,9 @@ export default function Page() {
     const query = (overrideQuery !== undefined ? overrideQuery : chatInput).trim();
     if (!query && chatImages.length === 0) return;
 
+    // Save previous clothing reference in case the uploaded image is categorized as model or scene background
+    const previousClothingBase64 = chatImageBase64;
+
     // Determine the current image context for chat
     let activeImg = chatImageBase64;
     if (chatImages.length > 0) {
@@ -1012,7 +1015,32 @@ export default function Page() {
         }
 
         if (parsedAction) {
-          const { action, actionExplanation, smartParams, customParams, configParams } = parsedAction;
+          const { action, actionExplanation, smartParams, customParams, configParams, detectedImageType } = parsedAction;
+
+          // Initialize local variables for synchronous processing (avoiding React state update lag)
+          let modelBase64ToUse = modelBase64 || null;
+          let sceneBase64ToUse = sceneBase64 || null;
+          let refsToUse = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
+            ? newUserMsg.imageUrls 
+            : (activeImg ? [activeImg] : []);
+
+          // Route uploaded image based on detectedImageType
+          if (detectedImageType === 'model' && activeImg) {
+            modelBase64ToUse = activeImg;
+            setModelBase64(activeImg);
+            // Restore previous clothing/garment image for the chat interface
+            setChatImageBase64(previousClothingBase64);
+            refsToUse = previousClothingBase64 ? [previousClothingBase64] : [];
+          } else if (detectedImageType === 'scene' && activeImg) {
+            sceneBase64ToUse = activeImg;
+            setSceneBase64(activeImg);
+            // Restore previous clothing/garment image for the chat interface
+            setChatImageBase64(previousClothingBase64);
+            refsToUse = previousClothingBase64 ? [previousClothingBase64] : [];
+          } else if (detectedImageType === 'clothing' && activeImg) {
+            setChatImageBase64(activeImg);
+            refsToUse = [activeImg];
+          }
 
           // Update message metadata
           setChatMessages(prev => prev.map(m => m.id === typingId ? {
@@ -1076,11 +1104,7 @@ export default function Page() {
             } : m));
           }
           else if (action === 'generate_smart' && smartParams) {
-            const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
-              ? newUserMsg.imageUrls 
-              : (activeImg ? [activeImg] : []);
-
-            if (refs.length === 0) {
+            if (refsToUse.length === 0) {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
                 content: m.content + '\n\n*(提示：请先通过对话框附件上传商品服装原图)*',
@@ -1121,11 +1145,11 @@ export default function Page() {
               handleConfirmRender(typingId, {
                 action: 'generate_smart',
                 smartParams: smartParams,
-                refs: refs
+                refs: refsToUse
               }, {
-                modelBase64: modelBase64 || null,
+                modelBase64: modelBase64ToUse,
                 modelStyle: defaultModelStyle,
-                sceneBase64: sceneBase64 || null,
+                sceneBase64: sceneBase64ToUse,
                 selectedPresetId: selectedPresetId || '',
                 sceneStyle: defaultSceneStyle
               });
@@ -1137,16 +1161,12 @@ export default function Page() {
                 configDetails: {
                   action: 'generate_smart',
                   smartParams: smartParams,
-                  refs: refs
+                  refs: refsToUse
                 }
               } : m));
             }
           }
           else if (action === 'generate_custom' && customParams) {
-            const refs = newUserMsg.imageUrls && newUserMsg.imageUrls.length > 0 
-              ? newUserMsg.imageUrls 
-              : (activeImg ? [activeImg] : []);
-
             if (!userId || !toolId) {
               setChatMessages(prev => prev.map(m => m.id === typingId ? {
                 ...m,
@@ -1178,11 +1198,11 @@ export default function Page() {
               handleConfirmRender(typingId, {
                 action: 'generate_custom',
                 customParams: customParams,
-                refs: refs
+                refs: refsToUse
               }, {
-                modelBase64: modelBase64 || null,
+                modelBase64: modelBase64ToUse,
                 modelStyle: defaultModelStyle,
-                sceneBase64: sceneBase64 || null,
+                sceneBase64: sceneBase64ToUse,
                 selectedPresetId: selectedPresetId || '',
                 sceneStyle: defaultSceneStyle
               });
@@ -1194,7 +1214,7 @@ export default function Page() {
                 configDetails: {
                   action: 'generate_custom',
                   customParams: customParams,
-                  refs: refs
+                  refs: refsToUse
                 }
               } : m));
             }
