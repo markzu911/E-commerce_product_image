@@ -1050,9 +1050,7 @@ export default function Page() {
       }
       return {
         role: m.role,
-        content: content,
-        imageUrls: m.imageUrls,
-        imageUrl: m.imageUrl
+        content: content
       };
     });
 
