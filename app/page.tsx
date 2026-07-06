@@ -941,7 +941,8 @@ export default function Page() {
           imageBase64: activeImg || null,
           imagesBase64: newUserMsg.imageUrls || null,
           currentConfig: chatConfig,
-          currentAnalysis: chatAnalysis
+          currentAnalysis: chatAnalysis,
+          hasClothingImage: !!chatImageBase64 || !!activeImg
         })
       });
 
