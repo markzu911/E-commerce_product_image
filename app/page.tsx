@@ -272,12 +272,18 @@ interface ChatRenderOptionsCardProps {
   defaultModelBase64?: string;
   defaultSceneBase64?: string;
   defaultPresetId?: string;
+  currentConfig: PromptConfig;
+  currentResolution: string;
   onConfirm: (config: {
     modelBase64: string | null;
     modelStyle: string;
     sceneBase64: string | null;
     selectedPresetId: string;
     sceneStyle: string;
+    aspectRatio?: string;
+    resolution?: string;
+    garmentColor?: string;
+    garmentMaterial?: string;
   }) => void;
 }
 
@@ -286,6 +292,8 @@ function ChatRenderOptionsCard({
   defaultModelBase64, 
   defaultSceneBase64, 
   defaultPresetId, 
+  currentConfig,
+  currentResolution,
   onConfirm 
 }: ChatRenderOptionsCardProps) {
   const [modelType, setModelType] = useState<'system' | 'custom'>(
@@ -322,6 +330,19 @@ function ChatRenderOptionsCard({
     const preset = PRESET_SCENES.find(p => p.id === (defaultPresetId || 'nordic_living'));
     return preset ? preset.styleText : '北欧极简暖雅原木家居，温和阳光柔和漫反射';
   });
+
+  const [aspectRatio, setAspectRatio] = useState<string>(
+    details.smartParams?.config?.aspectRatio || currentConfig.aspectRatio || '3:4'
+  );
+  const [resolution, setResolution] = useState<string>(
+    details.smartParams?.config?.resolution || currentResolution || '2k'
+  );
+  const [garmentColor, setGarmentColor] = useState<string>(
+    details.smartParams?.config?.garmentColor || currentConfig.garmentColor || ''
+  );
+  const [garmentMaterial, setGarmentMaterial] = useState<string>(
+    details.smartParams?.config?.garmentMaterial || currentConfig.garmentMaterial || ''
+  );
 
   const modelPresets = [
     '高阶立体模特/国风超模',
@@ -551,14 +572,98 @@ function ChatRenderOptionsCard({
         )}
       </div>
 
-      {/* 3. Render Trigger Button */}
+      {/* 3. Details & Aspect Ratio Micro-tuning */}
+      <div className="space-y-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-left">
+        <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          画幅与细节微调 (其他参数)
+        </span>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400">画幅比例 (Ratio)</span>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-150/60">
+              {[
+                { ratio: '1:1', label: '1:1 正方形' },
+                { ratio: '3:4', label: '3:4 人像' },
+                { ratio: '9:16', label: '9:16 竖屏' }
+              ].map((opt) => (
+                <button
+                  key={opt.ratio}
+                  type="button"
+                  onClick={() => setAspectRatio(opt.ratio)}
+                  className={`flex-1 py-1 text-[9px] font-black rounded-md transition-all ${
+                    aspectRatio === opt.ratio
+                      ? 'bg-white dark:bg-slate-700 shadow-sm text-primary scale-105 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {opt.label.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400">清晰度 (Quality)</span>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-150/60">
+              {[
+                { res: '1k', label: '1K 标清' },
+                { res: '2k', label: '2K 高清' },
+                { res: '4k', label: '4K 超清' }
+              ].map((opt) => (
+                <button
+                  key={opt.res}
+                  type="button"
+                  onClick={() => setResolution(opt.res)}
+                  className={`flex-1 py-1 text-[9px] font-black rounded-md transition-all ${
+                    resolution === opt.res
+                      ? 'bg-white dark:bg-slate-700 shadow-sm text-primary scale-105 font-extrabold'
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {opt.label.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400">服装主体颜色 (Color)</span>
+            <Input
+              value={garmentColor}
+              onChange={(e) => setGarmentColor(e.target.value)}
+              placeholder="例如：米白色、莫兰迪蓝"
+              className="text-xs font-medium h-8 bg-slate-50/50 dark:bg-slate-950/20"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400">面料与材质 (Material)</span>
+            <Input
+              value={garmentMaterial}
+              onChange={(e) => setGarmentMaterial(e.target.value)}
+              placeholder="例如：丝绸、羊绒针织"
+              className="text-xs font-medium h-8 bg-slate-50/50 dark:bg-slate-950/20"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Render Trigger Button */}
       <Button
         onClick={() => onConfirm({
           modelBase64: modelType === 'custom' ? customModelBase64 : null,
           modelStyle,
           sceneBase64: sceneType === 'custom' ? customSceneBase64 : null,
           selectedPresetId: sceneType === 'preset' ? selectedPresetId : '',
-          sceneStyle
+          sceneStyle,
+          aspectRatio,
+          resolution,
+          garmentColor,
+          garmentMaterial
         })}
         className="w-full h-9 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-black tracking-wider flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] transition-all"
       >
@@ -1125,7 +1230,21 @@ export default function Page() {
               return;
             }
 
-            if (parsedAction.directGenerate === true) {
+            const genType = smartParams?.type || 'main';
+            let isDirectGen = parsedAction.directGenerate === true;
+            
+            // Core Rule: Only 'scene' (真人模特上身场景图) can trigger and show the configuration card.
+            // Other types (main, detail, sellingPoint) MUST always generate directly in one go!
+            if (genType === 'main' || genType === 'detail' || genType === 'sellingPoint') {
+              isDirectGen = true;
+            } else if (genType === 'scene') {
+              const queryLower = query.toLowerCase();
+              if (queryLower.includes('定制真人模特场景') || queryLower.includes('选择模特') || queryLower.includes('上传模特') || queryLower.includes('配置模特')) {
+                isDirectGen = false;
+              }
+            }
+
+            if (isDirectGen) {
               const defaultModelStyle = smartParams.config?.modelStyle || chatConfig.modelStyle || '高阶立体模特/国风超模';
               const defaultSceneStyle = smartParams.config?.sceneStyle || chatConfig.sceneStyle || '北欧极简暖雅原木家居，温和阳光柔和漫反射';
               
@@ -1266,8 +1385,15 @@ export default function Page() {
       sceneBase64: string | null;
       selectedPresetId: string;
       sceneStyle: string;
+      aspectRatio?: string;
+      resolution?: string;
+      garmentColor?: string;
+      garmentMaterial?: string;
     }
   ) => {
+    const finalAspectRatio = confirmConfig.aspectRatio || chatConfig.aspectRatio;
+    const finalResolution = confirmConfig.resolution || chatResolution;
+
     // 1. Hide the config card, show loading card in the message bubble
     setChatMessages(prev => prev.map(m => m.id === msgId ? {
       ...m,
@@ -1275,8 +1401,8 @@ export default function Page() {
       isGeneratingImages: true,
       generationDetails: {
         action: configDetails.action,
-        aspectRatio: chatConfig.aspectRatio,
-        resolution: chatResolution,
+        aspectRatio: finalAspectRatio,
+        resolution: finalResolution,
         modelStyle: confirmConfig.modelStyle,
         sceneStyle: confirmConfig.sceneStyle,
         sceneTheme: configDetails.smartParams?.config?.sceneTheme || '展示场景'
@@ -1318,11 +1444,14 @@ export default function Page() {
           ...(smartParams?.config || {}),
           modelStyle: confirmConfig.modelStyle,
           sceneStyle: confirmConfig.sceneStyle,
-          aspectRatio: chatConfig.aspectRatio,
-          resolution: chatResolution,
+          aspectRatio: finalAspectRatio,
+          resolution: finalResolution,
+          garmentColor: confirmConfig.garmentColor !== undefined ? confirmConfig.garmentColor : (smartParams?.config?.garmentColor || chatConfig.garmentColor),
+          garmentMaterial: confirmConfig.garmentMaterial !== undefined ? confirmConfig.garmentMaterial : (smartParams?.config?.garmentMaterial || chatConfig.garmentMaterial),
           isCustomScene: !!finalSceneBase64
         };
         setChatConfig(finalConfig);
+        setChatResolution(finalResolution as any);
 
         for (let i = 0; i < refs.length; i++) {
           const currentRef = refs[i];
@@ -2406,6 +2535,8 @@ export default function Page() {
                           defaultModelBase64={modelBase64}
                           defaultSceneBase64={sceneBase64}
                           defaultPresetId={selectedPresetId}
+                          currentConfig={chatConfig}
+                          currentResolution={chatResolution}
                           onConfirm={(config) => handleConfirmRender(msg.id, msg.configDetails!, config)} 
                         />
                       )}
