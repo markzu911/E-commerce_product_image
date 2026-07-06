@@ -2353,15 +2353,15 @@ export default function Page() {
                         <div className="mt-4 p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-xl w-full animate-in fade-in-50 duration-500 shadow-sm space-y-3.5">
                           <div className="flex items-center gap-2">
                             <Wand2 className="w-4 h-4 text-primary animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">新手创作灵感星火：</span>
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">四大核心电商生图逻辑：</span>
                           </div>
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             {[
-                              { text: '帮我做一张卖点图，突出面料舒适', desc: '展现温润柔和自然光影，慵懒呼吸感' },
-                              { text: '我想生成欧美女模，背景设定在咖啡馆', desc: '街头咖啡馆，温和午后光，优雅时尚' },
-                              { text: '自由构思：挂在山顶枯木上，荒野孤寂冷色调', desc: '大衣悬挂枯木，深灰枯草，极具艺术感' },
-                              { text: '分析并提取这件衣服的设计特点', desc: '顶级买手深度分析并自动同步生图配置' }
+                              { text: '直接生成商品主图', desc: '纯静物单品白底首图，产品饱满对称，无模特' },
+                              { text: '直接生成多角度材质细节详情图', desc: '展示领口、袖口、拉链与精致面料做工拼接细节' },
+                              { text: '直接生成大牌卖点图', desc: '高端模特画册海报，深度提炼并突出服装版型与特色卖点' },
+                              { text: '直接生成真人模特场景图', desc: '衣服穿在真人模特上，完美融入咖啡馆/街头/法式背景' }
                             ].map((item, idx) => (
                               <button
                                 key={idx}
@@ -2399,78 +2399,78 @@ export default function Page() {
                           {/* Fast interactive options */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <button
-                              type="button"
-                              onClick={() => {
-                                if (!chatImageBase64) {
-                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
-                                  chatAttachmentRef.current?.click();
-                                } else {
-                                  handleChatSend(undefined, "直接生成商品主图");
-                                }
-                              }}
-                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                                type="button"
+                                onClick={() => {
+                                  if (!chatImageBase64) {
+                                    setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                    chatAttachmentRef.current?.click();
+                                  } else {
+                                    handleChatSend(undefined, "直接生成商品主图");
+                                  }
+                                }}
+                                className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Sparkles className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 生成商品主图 (Main)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">流式设计高档主图海报</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 商品主图 (Main)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">纯静物单品白底首图</span>
                               </div>
                             </button>
 
                             <button
-                              type="button"
-                              onClick={() => {
-                                if (!chatImageBase64) {
-                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
-                                  chatAttachmentRef.current?.click();
-                                } else {
-                                  handleChatSend(undefined, "切换到模特上身并生成");
-                                }
-                              }}
-                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                                type="button"
+                                onClick={() => {
+                                  if (!chatImageBase64) {
+                                    setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                    chatAttachmentRef.current?.click();
+                                  } else {
+                                    handleChatSend(undefined, "直接生成真人模特场景图");
+                                  }
+                                }}
+                                className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Wand2 className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 模特效果生图 (Model)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">服装真人高档模特渲染</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 真人模特场景图 (Scene)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">完美融入各色生活场景</span>
                               </div>
                             </button>
 
                             <button
-                              type="button"
-                              onClick={() => {
-                                if (!chatImageBase64) {
-                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
-                                  chatAttachmentRef.current?.click();
-                                } else {
-                                  handleChatSend(undefined, "生成一张服装卖点特写图");
-                                }
-                              }}
-                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                                type="button"
+                                onClick={() => {
+                                  if (!chatImageBase64) {
+                                    setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                    chatAttachmentRef.current?.click();
+                                  } else {
+                                    handleChatSend(undefined, "直接生成多角度材质细节详情图");
+                                  }
+                                }}
+                                className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Sliders className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 卖点细节特写 (Detail)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">聚焦面料材质与裁剪特写</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 材质细节详情图 (Detail)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">聚焦拉链走线、面料特写拼接</span>
                               </div>
                             </button>
 
                             <button
-                              type="button"
-                              onClick={() => {
-                                if (!chatImageBase64) {
-                                  setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
-                                  chatAttachmentRef.current?.click();
-                                } else {
-                                  handleChatSend(undefined, "把服装融入特定的奢华背景中并生成");
-                                }
-                              }}
-                              className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
+                                type="button"
+                                onClick={() => {
+                                  if (!chatImageBase64) {
+                                    setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
+                                    chatAttachmentRef.current?.click();
+                                  } else {
+                                    handleChatSend(undefined, "直接生成大牌卖点图");
+                                  }
+                                }}
+                                className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <ImageIcon className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 创意背景重构 (Scene)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">自然植入多维商业环境</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 创意大牌卖点图 (SellingPoint)</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">突出设计理念与优势卖点海报</span>
                               </div>
                             </button>
                           </div>
