@@ -289,7 +289,7 @@ export default function Page() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const [activeMode, setActiveMode] = useState<'lobby' | 'normal' | 'chat'>('chat');
+  const [activeMode, setActiveMode] = useState<'lobby' | 'normal' | 'chat'>('lobby');
   const [normalSubMode, setNormalSubMode] = useState<'smart' | 'custom'>('smart');
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [customResolution, setCustomResolution] = useState<'1k' | '2k' | '4k'>('2k');
