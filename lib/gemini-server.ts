@@ -359,6 +359,35 @@ function buildPrompt(
   return basePrompt;
 }
 
+function formatImageGenerationError(error: any): string {
+  const errMsg = error?.message || String(error);
+  if (
+    errMsg.includes('Quota exceeded') ||
+    errMsg.includes('RESOURCE_EXHAUSTED') ||
+    errMsg.includes('quota') ||
+    errMsg.includes('429') ||
+    errMsg.includes('limit: 0')
+  ) {
+    return `AI 绘图失败: 您的 API Key 的绘图额度已超限或已被限额（限额 limit: 0）。
+
+**💡 解决方案：**
+1. 图像生成系列模型（如 gemini-3.1-flash-image 等）是付费专有模型，需要启用 Billing 账单付款账户。
+2. 请点击 AI Studio 的右上角 **「Paid Key」** 或齿轮 **「Settings > Secrets」** 流程连接/更换您的付费凭证。
+3. 如果您想继续在免费额度下体验，建议稍后重试，或更换为其他有余额的 API 密钥。`;
+  }
+  
+  if (errMsg.includes('PERMISSION_DENIED') || errMsg.includes('403') || errMsg.includes('denied access')) {
+    return `AI 绘图失败: 您的项目或 API Key 被拒绝访问 (Permission Denied 403)。
+
+**💡 解决方案：**
+1. 图像生成系列模型在免费 API Key 下可能会受到限制，建议使用开启了 Billing 的付款账户项目。
+2. 请点击 AI Studio 的右上角 **「Paid Key」** 流程连接或切换您的付费模型凭证。
+3. 请检查您的 API 密钥是否有效，且没有被 IP 或地理位置等安全策略限制。`;
+  }
+  
+  return `AI 绘图失败 (模型繁忙): ${errMsg}。请稍后重试。`;
+}
+
 export async function generateImageServer(
   type: string,
   imageUrlBase64: string,
@@ -478,8 +507,7 @@ export async function generateImageServer(
         }
       }
     } catch (fallbackError: any) {
-      const errMsg = fallbackError?.message || String(fallbackError);
-      throw new Error(`AI 绘图失败 (模型繁忙): ${errMsg}。请稍后重试。`);
+      throw new Error(formatImageGenerationError(fallbackError));
     }
   }
 
@@ -568,8 +596,7 @@ export async function generateCustomImageServer(
         }
       }
     } catch (fallbackError: any) {
-      const errMsg = fallbackError?.message || String(fallbackError);
-      throw new Error(`AI 绘图失败 (模型繁忙): ${errMsg}。请稍后重试。`);
+      throw new Error(formatImageGenerationError(fallbackError));
     }
   }
 
