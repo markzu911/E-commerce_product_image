@@ -2449,15 +2449,15 @@ export default function Page() {
                         <div className="mt-4 p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-xl w-full animate-in fade-in-50 duration-500 shadow-sm space-y-3.5">
                           <div className="flex items-center gap-2">
                             <Wand2 className="w-4 h-4 text-primary animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">四大电商定制生图逻辑（逐步上传模特与场景）：</span>
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">四大电商定制生图逻辑（上传模特与场景）：</span>
                           </div>
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             {[
-                              { text: '逐步定制商品主图', desc: '纯静物单品白底首图，逐步确认画幅比例与参数配置' },
-                              { text: '逐步定制多角度材质细节详情图', desc: '物理材质微距特写拼接，逐步确认参数配置' },
-                              { text: '逐步定制大牌卖点图', desc: '商业海报画册，逐步定制品牌文案、模特及场景' },
-                              { text: '逐步定制真人模特场景图', desc: '真人上身试穿效果，逐步选择/上传模特姿容与背景场景' }
+                              { text: '定制商品主图', desc: '纯静物单品白底首图，确认画幅比例与参数配置' },
+                              { text: '定制多角度材质细节详情图', desc: '物理材质微距特写拼接，确认参数配置' },
+                              { text: '定制大牌卖点图', desc: '商业海报画册，定制品牌文案、模特及场景' },
+                              { text: '定制真人模特场景图', desc: '真人上身试穿效果，选择/上传模特姿容与背景场景' }
                             ].map((item, idx) => (
                               <button
                                 key={idx}
@@ -2465,7 +2465,7 @@ export default function Page() {
                                 onClick={() => {
                                   if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                     setChatInput(item.text);
-                                    setStatusMsg({ type: 'success', content: '💡 请先点击对话框左下角回形针上传衣服原图，再开启逐步定制流程！' });
+                                    setStatusMsg({ type: 'success', content: '💡 请先点击对话框左下角回形针上传衣服原图，再开启定制流程！' });
                                     chatAttachmentRef.current?.click();
                                   } else {
                                     const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
@@ -2509,14 +2509,14 @@ export default function Page() {
                                     if (activeRef && !chatImageBase64) {
                                       setChatImageBase64(activeRef);
                                     }
-                                    handleChatSend(undefined, "逐步定制商品主图");
+                                    handleChatSend(undefined, "定制商品主图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Sparkles className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 逐步定制商品主图</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 定制商品主图</span>
                                 <span className="text-[9px] text-slate-400 font-normal truncate">纯静物单品白底首图</span>
                               </div>
                             </button>
@@ -2532,14 +2532,14 @@ export default function Page() {
                                     if (activeRef && !chatImageBase64) {
                                       setChatImageBase64(activeRef);
                                     }
-                                    handleChatSend(undefined, "逐步定制真人模特场景图");
+                                    handleChatSend(undefined, "定制真人模特场景图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Wand2 className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 逐步定制真人模特场景</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 定制真人模特场景</span>
                                 <span className="text-[9px] text-slate-400 font-normal truncate">自主选择模特样式、上传背景</span>
                               </div>
                             </button>
@@ -2555,14 +2555,14 @@ export default function Page() {
                                     if (activeRef && !chatImageBase64) {
                                       setChatImageBase64(activeRef);
                                     }
-                                    handleChatSend(undefined, "逐步定制多角度材质细节详情图");
+                                    handleChatSend(undefined, "定制多角度材质细节详情图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Sliders className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 逐步定制材质细节详情</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 定制材质细节详情</span>
                                 <span className="text-[9px] text-slate-400 font-normal truncate">微距特写面料拼接与精致做工</span>
                               </div>
                             </button>
@@ -2578,14 +2578,14 @@ export default function Page() {
                                     if (activeRef && !chatImageBase64) {
                                       setChatImageBase64(activeRef);
                                     }
-                                    handleChatSend(undefined, "逐步定制大牌卖点图");
+                                    handleChatSend(undefined, "定制大牌卖点图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <ImageIcon className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 逐步定制大牌卖点图</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 定制大牌卖点图</span>
                                 <span className="text-[9px] text-slate-400 font-normal truncate">高端商业海报，突出核心优势</span>
                               </div>
                             </button>
