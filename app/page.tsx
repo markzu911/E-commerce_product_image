@@ -269,6 +269,9 @@ interface ChatRenderOptionsCardProps {
     customParams?: any;
     refs: string[];
   };
+  defaultModelBase64?: string;
+  defaultSceneBase64?: string;
+  defaultPresetId?: string;
   onConfirm: (config: {
     modelBase64: string | null;
     modelStyle: string;
@@ -278,19 +281,47 @@ interface ChatRenderOptionsCardProps {
   }) => void;
 }
 
-function ChatRenderOptionsCard({ details, onConfirm }: ChatRenderOptionsCardProps) {
-  const [modelType, setModelType] = useState<'system' | 'custom'>('system');
-  const [customModelBase64, setCustomModelBase64] = useState<string | null>(null);
+function ChatRenderOptionsCard({ 
+  details, 
+  defaultModelBase64, 
+  defaultSceneBase64, 
+  defaultPresetId, 
+  onConfirm 
+}: ChatRenderOptionsCardProps) {
+  const [modelType, setModelType] = useState<'system' | 'custom'>(
+    defaultModelBase64 ? 'custom' : 'system'
+  );
+  const [customModelBase64, setCustomModelBase64] = useState<string | null>(
+    defaultModelBase64 || null
+  );
   const [modelStyle, setModelStyle] = useState<string>(
     details.smartParams?.config?.modelStyle || '高阶立体模特/国风超模'
   );
   
-  const [sceneType, setSceneType] = useState<'preset' | 'custom'>('preset');
-  const [customSceneBase64, setCustomSceneBase64] = useState<string | null>(null);
-  const [selectedPresetId, setSelectedPresetId] = useState<string>('nordic_living');
-  const [sceneStyle, setSceneStyle] = useState<string>(
-    details.smartParams?.config?.sceneStyle || '北欧极简暖雅原木家居，温和阳光柔和漫反射'
+  // If user explicitly specified scene style details in the chat (either as smart param or custom prompt),
+  // we do NOT override it with the preset image background template. We use a text-driven scene instead.
+  const hasCustomSceneStyle = !!(details.smartParams?.config?.sceneStyle || details.customParams?.prompt);
+  
+  const [sceneType, setSceneType] = useState<'preset' | 'custom'>(
+    defaultSceneBase64 ? 'custom' : 'preset'
   );
+  const [customSceneBase64, setCustomSceneBase64] = useState<string | null>(
+    defaultSceneBase64 || null
+  );
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(
+    defaultSceneBase64 ? '' : (hasCustomSceneStyle ? '' : (defaultPresetId || 'nordic_living'))
+  );
+  
+  const [sceneStyle, setSceneStyle] = useState<string>(() => {
+    if (details.smartParams?.config?.sceneStyle) {
+      return details.smartParams.config.sceneStyle;
+    }
+    if (details.customParams?.prompt) {
+      return details.customParams.prompt;
+    }
+    const preset = PRESET_SCENES.find(p => p.id === (defaultPresetId || 'nordic_living'));
+    return preset ? preset.styleText : '北欧极简暖雅原木家居，温和阳光柔和漫反射';
+  });
 
   const modelPresets = [
     '高阶立体模特/国风超模',
@@ -2165,6 +2196,9 @@ export default function Page() {
                       {msg.isConfigurationRequired && msg.configDetails && (
                         <ChatRenderOptionsCard 
                           details={msg.configDetails} 
+                          defaultModelBase64={modelBase64}
+                          defaultSceneBase64={sceneBase64}
+                          defaultPresetId={selectedPresetId}
                           onConfirm={(config) => handleConfirmRender(msg.id, msg.configDetails!, config)} 
                         />
                       )}
