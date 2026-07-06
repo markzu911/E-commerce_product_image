@@ -878,7 +878,13 @@ export default function Page() {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const compressed = await compressImage(event.target?.result as string);
-        setChatImages(prev => [...prev, compressed]);
+        setChatImages(prev => {
+          const newImages = [...prev, compressed];
+          if (newImages.length > 0) {
+            setChatImageBase64(newImages[0]);
+          }
+          return newImages;
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -2150,8 +2156,125 @@ export default function Page() {
         )}
 
         {activeMode === 'chat' && (
-          <div className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 flex flex-col justify-stretch py-2 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
+          <div className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 py-2 animate-in fade-in slide-in-from-bottom-8 duration-700 h-full">
+            {/* Left Sidebar: Creative Assets Panel */}
+            <aside className="hidden lg:flex lg:col-span-3 flex-col space-y-4 overflow-y-auto pr-1 h-full pb-4">
+              {/* Product Reference */}
+              <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-sm hover:shadow-md transition-all">
+                <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">单品参考 (Ref)</span>
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  </div>
+                </div>
+                <div className="p-4">
+                  {chatImageBase64 || chatImages.length > 0 || imageBase64 ? (
+                    <div className="relative group/ref overflow-hidden rounded-[20px] aspect-[3/4]">
+                      <img 
+                        src={chatImageBase64 || chatImages[0] || imageBase64} 
+                        className="w-full h-full object-cover shadow-sm border border-slate-50" 
+                        alt="Product Reference" 
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => chatAttachmentRef.current?.click()}
+                      className="aspect-[3/4] border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[20px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer p-4 text-center"
+                    >
+                      <Upload className="w-5 h-5 text-primary/40 mb-2" />
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">请先上传单品原图</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Model Select */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all space-y-3">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-1">模特参考</Label>
+                {modelBase64 ? (
+                  <div className="relative rounded-[16px] overflow-hidden group/img shadow-sm aspect-[4/5]">
+                    <img src={modelBase64} className="w-full h-full object-cover" alt="Model" />
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[6px]">
+                      <Button size="sm" variant="secondary" className="rounded-full font-black text-[9px] uppercase tracking-widest" onClick={() => setModelBase64('')}>更换模特</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    className="aspect-[4/5] border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[20px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer" 
+                    onClick={() => modelInputRef.current?.click()}
+                  >
+                    <Sparkles className="w-5 h-5 text-primary/40 mb-1" />
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-center px-4">上传人像参考</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Background Preset Cards & Custom Upload */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">场景定制</Label>
+                  {selectedPresetId ? (
+                    <span className="bg-amber-500/10 text-amber-500 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">预设场景</span>
+                  ) : sceneBase64 ? (
+                    <span className="bg-primary/10 text-primary text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">自定义背景</span>
+                  ) : null}
+                </div>
+
+                {sceneBase64 ? (
+                  <div className="space-y-3">
+                    <div className="relative rounded-[16px] overflow-hidden group/img shadow-sm aspect-[4/5]">
+                      <img src={sceneBase64} className="w-full h-full object-cover" alt="Scene" />
+                      <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[6px]">
+                        <Button size="sm" variant="secondary" className="rounded-full font-black text-[9px] uppercase tracking-widest" onClick={handleClearScene}>清除背景</Button>
+                      </div>
+                    </div>
+                    {selectedPresetId && (
+                      <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                        <p className="text-[10px] font-black text-slate-700 dark:text-slate-300">
+                          {PRESET_SCENES.find(p => p.id === selectedPresetId)?.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRESET_SCENES.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handlePresetSceneSelect(preset.id)}
+                          className={`relative rounded-xl overflow-hidden aspect-[4/5] group border transition-all text-left ${selectedPresetId === preset.id ? 'border-primary ring-2 ring-primary/25' : 'border-slate-100 dark:border-slate-800/50 hover:border-primary/40 shadow-sm hover:shadow-md'}`}
+                        >
+                          <img src={preset.previewUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={preset.name} />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-end p-2">
+                            <p className="text-[9px] font-black text-white tracking-wide">{preset.name}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-slate-100 dark:border-slate-800" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white dark:bg-slate-900 px-2 text-[8px] font-black tracking-widest text-slate-400">或</span>
+                      </div>
+                    </div>
+                    <div 
+                      className="py-4 border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center rounded-[20px] bg-slate-50/50 dark:bg-slate-950 transition-all hover:border-primary/40 hover:bg-slate-50 cursor-pointer group" 
+                      onClick={() => sceneInputRef.current?.click()}
+                    >
+                      <Upload className="w-5 h-5 text-primary/40 mb-1 group-hover:scale-110 transition-transform" />
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center px-2">上传背景图</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            {/* Right: AI Chat Section */}
+            <div className="lg:col-span-9 flex-1 min-h-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none">
               {/* Chat Header */}
               <div className="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                 <div className="flex items-center gap-3">
@@ -2305,25 +2428,29 @@ export default function Page() {
                         <div className="mt-4 p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl max-w-xl w-full animate-in fade-in-50 duration-500 shadow-sm space-y-3.5">
                           <div className="flex items-center gap-2">
                             <Wand2 className="w-4 h-4 text-primary animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">四大核心电商生图逻辑：</span>
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">四大电商定制生图逻辑（逐步上传模特与场景）：</span>
                           </div>
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             {[
-                              { text: '直接生成商品主图', desc: '纯静物单品白底首图，产品饱满对称，无模特' },
-                              { text: '直接生成多角度材质细节详情图', desc: '展示领口、袖口、拉链与精致面料做工拼接细节' },
-                              { text: '直接生成大牌卖点图', desc: '高端模特画册海报，深度提炼并突出服装版型与特色卖点' },
-                              { text: '直接生成真人模特场景图', desc: '衣服穿在真人模特上，完美融入咖啡馆/街头/法式背景' }
+                              { text: '逐步定制商品主图', desc: '纯静物单品白底首图，逐步确认画幅比例与参数配置' },
+                              { text: '逐步定制多角度材质细节详情图', desc: '物理材质微距特写拼接，逐步确认参数配置' },
+                              { text: '逐步定制大牌卖点图', desc: '商业海报画册，逐步定制品牌文案、模特及场景' },
+                              { text: '逐步定制真人模特场景图', desc: '真人上身试穿效果，逐步选择/上传模特姿容与背景场景' }
                             ].map((item, idx) => (
                               <button
                                 key={idx}
                                 type="button"
                                 onClick={() => {
-                                  if (!chatImageBase64) {
+                                  if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                     setChatInput(item.text);
-                                    setStatusMsg({ type: 'success', content: '💡 请先点击对话框左下角回形针上传衣服原图，再进行生成！' });
+                                    setStatusMsg({ type: 'success', content: '💡 请先点击对话框左下角回形针上传衣服原图，再开启逐步定制流程！' });
                                     chatAttachmentRef.current?.click();
                                   } else {
+                                    const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                    if (activeRef && !chatImageBase64) {
+                                      setChatImageBase64(activeRef);
+                                    }
                                     handleChatSend(undefined, item.text);
                                   }
                                 }}
@@ -2345,7 +2472,7 @@ export default function Page() {
                               <Sliders className="w-3.5 h-3.5 text-primary" />
                               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">智能参数调节与下一步操作</span>
                             </div>
-                            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600">点击自动配置并直接生图</span>
+                            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600">点击分别上传/配置模特与场景</span>
                           </div>
 
                           {/* Fast interactive options */}
@@ -2353,18 +2480,22 @@ export default function Page() {
                             <button
                                 type="button"
                                 onClick={() => {
-                                  if (!chatImageBase64) {
+                                  if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                     setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
                                     chatAttachmentRef.current?.click();
                                   } else {
-                                    handleChatSend(undefined, "直接生成商品主图");
+                                    const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                    if (activeRef && !chatImageBase64) {
+                                      setChatImageBase64(activeRef);
+                                    }
+                                    handleChatSend(undefined, "逐步定制商品主图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Sparkles className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 商品主图 (Main)</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">📸 1. 逐步定制商品主图</span>
                                 <span className="text-[9px] text-slate-400 font-normal truncate">纯静物单品白底首图</span>
                               </div>
                             </button>
@@ -2372,57 +2503,69 @@ export default function Page() {
                             <button
                                 type="button"
                                 onClick={() => {
-                                  if (!chatImageBase64) {
+                                  if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                     setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
                                     chatAttachmentRef.current?.click();
                                   } else {
-                                    handleChatSend(undefined, "直接生成真人模特场景图");
+                                    const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                    if (activeRef && !chatImageBase64) {
+                                      setChatImageBase64(activeRef);
+                                    }
+                                    handleChatSend(undefined, "逐步定制真人模特场景图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Wand2 className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 真人模特场景图 (Scene)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">完美融入各色生活场景</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">💃 2. 逐步定制真人模特场景</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">自主选择模特样式、上传背景</span>
                               </div>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => {
-                                  if (!chatImageBase64) {
+                                  if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                     setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
                                     chatAttachmentRef.current?.click();
                                   } else {
-                                    handleChatSend(undefined, "直接生成多角度材质细节详情图");
+                                    const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                    if (activeRef && !chatImageBase64) {
+                                      setChatImageBase64(activeRef);
+                                    }
+                                    handleChatSend(undefined, "逐步定制多角度材质细节详情图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <Sliders className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 材质细节详情图 (Detail)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">聚焦拉链走线、面料特写拼接</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">✨ 3. 逐步定制材质细节详情</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">微距特写面料拼接与精致做工</span>
                               </div>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => {
-                                  if (!chatImageBase64) {
+                                  if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                     setStatusMsg({ type: 'error', content: '💡 请先点击对话框左下角回形针上传单品参考图！' });
                                     chatAttachmentRef.current?.click();
                                   } else {
-                                    handleChatSend(undefined, "直接生成大牌卖点图");
+                                    const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                    if (activeRef && !chatImageBase64) {
+                                      setChatImageBase64(activeRef);
+                                    }
+                                    handleChatSend(undefined, "逐步定制大牌卖点图");
                                   }
                                 }}
                                 className="px-3 py-2 text-left bg-white dark:bg-slate-900 hover:bg-primary/5 dark:hover:bg-primary/10 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-all flex items-center gap-2 shadow-sm"
                             >
                               <ImageIcon className="w-4 h-4 text-primary shrink-0" />
                               <div className="flex flex-col min-w-0">
-                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 创意大牌卖点图 (SellingPoint)</span>
-                                <span className="text-[9px] text-slate-400 font-normal truncate">突出设计理念与优势卖点海报</span>
+                                <span className="font-extrabold text-[11px] truncate text-slate-700 dark:text-slate-200">🏞️ 4. 逐步定制大牌卖点图</span>
+                                <span className="text-[9px] text-slate-400 font-normal truncate">高端商业海报，突出核心优势</span>
                               </div>
                             </button>
                           </div>
@@ -2445,9 +2588,13 @@ export default function Page() {
                                     type="button"
                                     onClick={() => {
                                       setChatConfig(prev => ({ ...prev, aspectRatio: opt.ratio }));
-                                      if (!chatImageBase64) {
+                                      if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                         setStatusMsg({ type: 'success', content: `尺寸已修改为 ${opt.ratio}。请上传图片并开始生成！` });
                                       } else {
+                                        const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                        if (activeRef && !chatImageBase64) {
+                                          setChatImageBase64(activeRef);
+                                        }
                                         handleChatSend(undefined, `把输出尺寸切换为 ${opt.ratio}，并直接生成一张生图`);
                                       }
                                     }}
@@ -2479,9 +2626,13 @@ export default function Page() {
                                     type="button"
                                     onClick={() => {
                                       setChatResolution(opt.res);
-                                      if (!chatImageBase64) {
+                                      if (!chatImageBase64 && chatImages.length === 0 && !imageBase64) {
                                         setStatusMsg({ type: 'success', content: `清晰度已修改为 ${opt.res.toUpperCase()}。请上传图片并开始生成！` });
                                       } else {
+                                        const activeRef = chatImageBase64 || chatImages[0] || imageBase64;
+                                        if (activeRef && !chatImageBase64) {
+                                          setChatImageBase64(activeRef);
+                                        }
                                         handleChatSend(undefined, `使用 ${opt.res.toUpperCase()} 清晰度，并直接生成一张生图`);
                                       }
                                     }}
@@ -2572,7 +2723,7 @@ export default function Page() {
                   <input 
                     type="text" 
                     className="flex-1 px-4 py-2.5 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-xs sm:text-sm placeholder:text-slate-300 font-medium"
-                    placeholder={imageBase64 || chatImages.length > 0 ? "例如: '我想做一张沙滩上的模特场景图'..." : "请点击回形针先上传一件或多张服装原图..."}
+                    placeholder={chatImageBase64 || imageBase64 || chatImages.length > 0 ? "例如: '我想做一张沙滩上的模特场景图'..." : "请点击回形针先上传一件或多张服装原图..."}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     disabled={isChatLoading}
